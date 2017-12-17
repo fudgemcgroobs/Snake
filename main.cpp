@@ -11,6 +11,13 @@
 #include <stddef.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "arena.h"
+
+unsigned int arena_size = 512;
+unsigned int grid_size = 10;
+unsigned int screen_padding = 5;
+unsigned int hud_height = 15;
+unsigned float cell_size;
 
 void keyboard(unsigned char key, int, int) {
     switch(key) {
@@ -24,7 +31,8 @@ void reshape(int w, int h)
 	glViewport(0, 0, w, h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(40.0, 1.0f, 1.0, 5.0);
+    
+    //gluPerspective(40.0, 1.0f, 1.0, 5.0);
 
 	glutPostRedisplay();
 }
@@ -46,7 +54,8 @@ void idle() {
 }
 
 void init(int argc, char* argv[])
-{
+{	
+	cell_size = arena_size / grid_size;
 	// if (argc>3)
 	// 	g_program_obj = create_and_compile_shaders(argv[1], argv[2], argv[3]);
 
@@ -54,6 +63,13 @@ void init(int argc, char* argv[])
     // {
         
     // }
+    // Set orthographic viewing
+	glMatrixMode(GL_PROJECTION); 
+	glLoadIdentity();
+
+	// Specify a projection with this view volume, centred on origin 
+	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
+	glOrtho(-2.0, 2.0, -2.0, 2.0, -4.0, 4.0);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
@@ -65,7 +81,7 @@ void init(int argc, char* argv[])
 int main(int argc, char* argv[]) {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
-	glutInitWindowSize(512, 512);
+	glutInitWindowSize(arena_size + screen_padding + hud_height, arena_size + screen_padding);
 	glutInitWindowPosition(50, 50);
     glutCreateWindow("Snake");
 

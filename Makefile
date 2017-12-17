@@ -3,7 +3,7 @@ PROGRAM_NAME = snake
 
 # Modify this variable as appropriate as you add .cpp files to
 # your project
-SRCS = main.cpp
+SRCS = cell.cpp arena.cpp main.cpp
 
 # you shouldn't need to modify below here, but you can
 # if you know what you're doing
