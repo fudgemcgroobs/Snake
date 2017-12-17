@@ -1,5 +1,5 @@
 # the name of the executable created
-PROGRAM_NAME = cs324_coursework
+PROGRAM_NAME = snake
 
 # Modify this variable as appropriate as you add .cpp files to
 # your project
