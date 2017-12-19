@@ -11,13 +11,21 @@
 #include <stddef.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "arena.h"
+#include "grid.h"
 
-unsigned int arena_size = 512;
+float arena_size = 513.0f;
+float screen_padding = 5.0f;
+float hud_height = 15.0f;
+float screen_height;
+float screen_width;
+float h_limit;
+float v_limit;
+float grid_left;
+float grid_right;
+float grid_top;
+float grid_bot;
 unsigned int grid_size = 10;
-unsigned int screen_padding = 5;
-unsigned int hud_height = 15;
-unsigned float cell_size;
+Grid* grid;
 
 void keyboard(unsigned char key, int, int) {
     switch(key) {
@@ -26,36 +34,41 @@ void keyboard(unsigned char key, int, int) {
     glutPostRedisplay();
 }
 
-void reshape(int w, int h)
-{
-	glViewport(0, 0, w, h);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
+// void reshape(int w, int h)
+// {
+// 	glViewport(0, 0, w, h);
+// 	glMatrixMode(GL_PROJECTION);
+// 	glLoadIdentity();
     
-    //gluPerspective(40.0, 1.0f, 1.0, 5.0);
+//     //gluPerspective(40.0, 1.0f, 1.0, 5.0);
 
-	glutPostRedisplay();
-}
+// 	glutPostRedisplay();
+// }
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(0, 0, -10,    // Eye position
+    gluLookAt(0, 0, 1,    // Eye position
               0, 0, 0,      // Ref point
               0, 1, 0       // Up vector
     );
 
+	glColor3f(1.0f, 1.0f, 1.0f);
+	glBegin(GL_LINES);
+		glVertex2f(-h_limit, grid_top + screen_padding);
+		glVertex2f(h_limit, grid_top + screen_padding);
+	glEnd();
+	
     glutSwapBuffers();
 }
 
-void idle() {
+// void idle() {
 
-}
+// }
 
 void init(int argc, char* argv[])
 {	
-	cell_size = arena_size / grid_size;
 	// if (argc>3)
 	// 	g_program_obj = create_and_compile_shaders(argv[1], argv[2], argv[3]);
 
@@ -63,26 +76,40 @@ void init(int argc, char* argv[])
     // {
         
     // }
+	
     // Set orthographic viewing
+	glViewport(0, 0, screen_width, screen_height);
 	glMatrixMode(GL_PROJECTION); 
 	glLoadIdentity();
 
 	// Specify a projection with this view volume, centred on origin 
 	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
-	glOrtho(-2.0, 2.0, -2.0, 2.0, -4.0, 4.0);
+	gluOrtho2D(-h_limit, h_limit, -v_limit, v_limit);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	glClearColor(0.1f, 0.1f, 0.44f, 1.0f);
+	glClearColor(.0f, 0.2f, .0f, 1.0f);
 }
 
 int main(int argc, char* argv[]) {
+	screen_height = arena_size + screen_padding + hud_height;
+	screen_width = arena_size + screen_padding;
+	h_limit = screen_width / 2;
+	v_limit = screen_height / 2;
+	grid_left = -h_limit + screen_padding;
+	grid_right = h_limit - screen_padding;
+	grid_top = v_limit - hud_height - screen_padding;
+	grid_bot = -v_limit + screen_padding; 
+	grid = new Grid(arena_size, grid_size, screen_padding,
+					grid_right,
+					grid_top);
+	
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
-	glutInitWindowSize(arena_size + screen_padding + hud_height, arena_size + screen_padding);
-	glutInitWindowPosition(50, 50);
+	glutInitWindowSize(screen_width, screen_height);
+	glutInitWindowPosition(0, 0);
     glutCreateWindow("Snake");
 
 #ifndef __APPLE__
@@ -96,9 +123,9 @@ int main(int argc, char* argv[]) {
 #endif
 
 	glutKeyboardFunc(keyboard); 
-	glutReshapeFunc(reshape); 
+	// glutReshapeFunc(reshape); 
 	glutDisplayFunc(display); 
-	glutIdleFunc(idle); 
+	// glutIdleFunc(idle); 
 
 	fprintf(stderr, "Open GL version %s\n", glGetString(GL_VERSION));
 	init(argc, argv); 
