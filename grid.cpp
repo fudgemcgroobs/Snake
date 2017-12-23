@@ -20,13 +20,13 @@ unsigned int Grid::GetGridSize() {
 }
 
 Cell* Grid::GetCellAt(int i, int j) {
-    if(i >= grid_size) {
+    if(i >= (int) grid_size) {
         i = grid_size - 1;
     } else if(i < 0) {
         i = 0;
     }
 
-    if(j >= grid_size) {
+    if(j >= (int) grid_size) {
         j = grid_size - 1;
     } else if(j < 0) {
         j = 0;

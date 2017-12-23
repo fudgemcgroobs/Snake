@@ -60,13 +60,13 @@ unsigned int Snake::Move() {
     Segment* s = head;
     while(s != NULL) {
         s->Move();
-        if( s->GetX() > x_limit ) {
+        if( s->GetX() >= x_limit ) {
             return s->GetOrder();
         } else if( s->GetX() < 0 ) {
             return s->GetOrder();
         }
 
-        if( s->GetY() > x_limit ) {
+        if( s->GetY() >= x_limit ) {
             return s->GetOrder();
         } else if( s->GetY() < 0 ) {
             return s->GetOrder();
