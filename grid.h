@@ -16,9 +16,9 @@ class Grid {
         Grid();
         Grid(float a_s, unsigned int g_s, float s_p,
                 float edgeX, float edgeY);
-        unsigned int GetGridSize();
         float GetCellSize();
-        Cell* GetCellAt(int i, int j);
         void Delete();
+        unsigned int GetGridSize();
+        Cell* GetCellAt(int i, int j);        
 };
 #endif

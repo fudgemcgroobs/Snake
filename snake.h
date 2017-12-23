@@ -6,16 +6,17 @@
 class Snake {
     Segment* head;
     Segment* tail;
-    float delay;
-    float x_limit;
-    float y_limit;
+    int x_limit;
+    int y_limit;
     unsigned int length;
     unsigned int score;
-    void AddSegment()
+    void AddSegment();
 
     public:
         Snake();
-        float GetDelay();
+        Snake(int headX, int headY, int limit);
+        void Delete();
+        void SetDirection(Direction d);
         unsigned int GetLength();
         unsigned int GetScore();
         unsigned int EatPallet();

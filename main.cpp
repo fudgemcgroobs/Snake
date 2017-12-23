@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "grid.h"
+#include "snake.h"
 
 float arena_size = 512.0f;		// The size, in world units, of the play area
 float screen_padding = 5.0f;	// In world coordinates/sizes
@@ -24,8 +25,9 @@ float grid_left;		// The left edge of the grid (x-coordinate)
 float grid_right;		// The right edge of the grid (x-coordinate)
 float grid_top;			// The top edge of the grid (y-coordinate)
 float grid_bot;			// The bottom edge of the grid (y-coordinate)
+int ticks = 0;
 unsigned int grid_size = 20;	// The order of the grid/matrix. Must be >5
-unsigned int difficulty;			// The current difficulty level
+unsigned int difficulty = 1;			// The current difficulty level
 unsigned int difficulty_step = 5;	// The required score change for difficulty increase
 Grid* grid;
 Snake* snake;
@@ -57,7 +59,6 @@ void draw_grid() {
 			for(int j = 0; j < grid_size; j++) {
 				glPushMatrix();
 				Cell* new_cell = grid->GetCellAt(i, j);
-				printf("Drawing cell at: %f, %f\n", new_cell->GetX(), new_cell->GetY());
 				glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
 				glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
 				// glRotatei();
@@ -74,8 +75,9 @@ void draw_segment() {
 void draw_snake() {
 	unsigned int** positions = snake->GetSnakePosition();
 	for(int i = 0; i < snake->GetLength(); i++) {
-		glPushMatrix()
-			glTranslatef(positions[i][1], positions[i][2], .0f);
+		glPushMatrix();
+			Cell* new_cell = grid->GetCellAt(positions[i][0], positions[i][1]);
+			glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
 			glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
 			draw_segment();
 		glPopMatrix();
@@ -96,6 +98,15 @@ void keyboard(unsigned char key, int, int) {
 					exit(0); break;   // Press q to force exit application
     }
     glutPostRedisplay();
+}
+
+void SpecialKeys(int key, int x, int y) {
+	switch(key) {
+		case GLUT_KEY_UP: snake->SetDirection(UP); break;
+		case GLUT_KEY_RIGHT: snake->SetDirection(RIGHT); break;
+		case GLUT_KEY_DOWN: snake->SetDirection(DOWN); break;
+		case GLUT_KEY_LEFT: snake->SetDirection(LEFT); break;
+	}
 }
 
 // void reshape(int w, int h)
@@ -127,9 +138,14 @@ void display() {
     glutSwapBuffers();
 }
 
-// void idle() {
-
-// }
+void idle() {
+	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
+	ticks = (ticks + 1) % 41;
+	if(ticks == 45 - ( difficulty * 5 )) {
+		snake->Move();
+		glutPostRedisplay();
+	}
+}
 
 void init(int argc, char* argv[])
 {	
@@ -167,6 +183,8 @@ int main(int argc, char* argv[]) {
 		grid = new Grid(arena_size, grid_size, screen_padding,
 						grid_left,
 						grid_top);
+		snake = new Snake(3, 2, grid_size);
+		
 		
 		glutInit(&argc, argv);
 		glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
@@ -185,9 +203,10 @@ int main(int argc, char* argv[]) {
 	#endif
 
 		glutKeyboardFunc(keyboard); 
+		glutSpecialFunc(SpecialKeys);
 		// glutReshapeFunc(reshape); 
 		glutDisplayFunc(display); 
-		// glutIdleFunc(idle); 
+		glutIdleFunc(idle); 
 
 		fprintf(stderr, "Open GL version %s\n", glGetString(GL_VERSION));
 		init(argc, argv); 

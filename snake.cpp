@@ -1,9 +1,11 @@
 #include "snake.h"
+#include <stdio.h>
 
-Snake::Snake(int headX, int headY, int x_l, int y_l) {
-    delay = 2000.0f;
+Snake::Snake(int headX, int headY, int limit) {
     length = 3;
     score = 0;
+    x_limit = limit;
+    y_limit = limit;
 
     head = new Segment(1, true);
     Segment* s = new Segment(2);
@@ -18,8 +20,26 @@ Snake::Snake(int headX, int headY, int x_l, int y_l) {
     tail->SetPosition(headX-2, headY, RIGHT);
 }
 
-float Snake::GetDelay() {
-    return delay;
+void Snake::AddSegment() {
+    length++;
+    Segment* s = new Segment(length);
+    tail->SetNext(s);
+    s->SetPrev(tail);
+    tail = s;
+}
+
+void Snake::Delete() {
+    Segment* s = head;
+    while(s != NULL) {
+        Segment* n = s->GetNext();
+        s->Delete();
+        delete s;
+        s = n;
+    }
+}
+
+void Snake::SetDirection(Direction d) {
+    head->SetDirection(d);
 }
 
 unsigned int Snake::GetLength() {
@@ -34,14 +54,6 @@ unsigned int Snake::EatPallet() {
     score++;
     AddSegment();
     return score;
-}
-
-void Snake::AddSegment() {
-    Segment* s = new Segment();
-    tail->SetNext(s);
-    s->SetPrev(tail);
-    tail = s;
-    length++;
 }
 
 unsigned int Snake::Move() {
@@ -62,28 +74,19 @@ unsigned int Snake::Move() {
 
         s = s->GetNext();
     }
+    return -1;
 }
 
-unsigned int** GetSnakePosition() {
+unsigned int** Snake::GetSnakePosition() {
     unsigned int** positions = 0;
     positions = new unsigned int*[length];
     Segment* s = head;
     for(int i = 0; i < length && s != NULL; i++) {
         positions[i] = new unsigned int[2];
-        positions[i][0] = s->GetX();
-        positions[i][1] = s->GetY();
+        positions[i][0] = s->GetY();
+        positions[i][1] = s->GetX();
         s = s->GetNext();
     }
 
     return positions;
-}
-
-void Snake::Delete() {
-    Segment* s = head;
-    while(s != NULL) {
-        Segment* n = s->next;
-        s->Delete();
-        delete s;
-        s = n;
-    }
 }
