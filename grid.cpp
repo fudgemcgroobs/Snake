@@ -1,4 +1,5 @@
 #include "grid.h"
+#include <stdio.h>
 
 Grid::Grid() {}
 Grid::Grid(float a_s, unsigned int g_s, float s_p,
@@ -6,13 +7,12 @@ Grid::Grid(float a_s, unsigned int g_s, float s_p,
     // s_p is screen padding
     // a_s is arena size
     grid_size = g_s;
-    cell_size = (a_s - s_p) / (float) g_s;
+    cell_size = (a_s - s_p) / g_s;
     cells = new Cell**[g_s];
     for(int i = 0; i < g_s; i++) {
         cells[i] = new Cell*[g_s];
     }
-    GenerateCells(edgeX + s_p + cell_size/2,
-                  edgeY - s_p - cell_size/2);
+    GenerateCells(edgeX, edgeY);
 }
 
 unsigned int Grid::GetGridSize() {
@@ -38,4 +38,15 @@ void Grid::GenerateCells(float firstX, float firstY) {
         }
         y -= cell_size;
     }
+}
+
+void Grid::Delete() {
+    for(int i = 0; i < grid_size; i++) {
+        for(int j = 0; j < grid_size; j++) {
+            cells[i][j]->Delete();
+            delete cells[i][j];
+        }
+        delete cells[i];
+    }
+    delete cells;
 }

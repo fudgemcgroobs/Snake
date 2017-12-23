@@ -13,23 +13,87 @@
 #include <unistd.h>
 #include "grid.h"
 
-float arena_size = 513.0f;
-float screen_padding = 5.0f;
-float hud_height = 15.0f;
-float screen_height;
-float screen_width;
-float h_limit;
-float v_limit;
-float grid_left;
-float grid_right;
-float grid_top;
-float grid_bot;
-unsigned int grid_size = 10;
+float arena_size = 512.0f;		// The size, in world units, of the play area
+float screen_padding = 5.0f;	// In world coordinates/sizes
+float hud_height = 50.0f;		// The height of the HUD in the world
+float screen_height;	// The total height of the viewport and screen
+float screen_width;		// The total width of the viewport and screen
+float h_limit;			// The horizontal limit at which can draw
+float v_limit;			// The vertical limit at which can draw
+float grid_left;		// The left edge of the grid (x-coordinate)
+float grid_right;		// The right edge of the grid (x-coordinate)
+float grid_top;			// The top edge of the grid (y-coordinate)
+float grid_bot;			// The bottom edge of the grid (y-coordinate)
+unsigned int grid_size = 20;	// The order of the grid/matrix. Must be >5
+unsigned int difficulty;			// The current difficulty level
+unsigned int difficulty_step = 5;	// The required score change for difficulty increase
 Grid* grid;
+Snake* snake;
+
+/*
+* Method that draws a square of side size 1.0
+* scaling on x or y by a number N will result in a respective side of size N
+*/
+void draw_square() {
+	static float vertex[4][2] = {
+		{.0f, .0f},
+		{1.0f, .0f},
+		{1.0f, -1.0f},
+		{.0f, -1.0f}
+	};
+
+	glBegin(GL_LINE_LOOP);
+		for(int i = 0; i < 4; i++) {
+			glVertex2fv(vertex[i]);
+		}
+	glEnd();
+}
+
+/*
+* Method that draws a grid using the coordinates stored in the Grid structure
+*/
+void draw_grid() {
+	for(int i = 0; i < grid_size; i++) {
+			for(int j = 0; j < grid_size; j++) {
+				glPushMatrix();
+				Cell* new_cell = grid->GetCellAt(i, j);
+				printf("Drawing cell at: %f, %f\n", new_cell->GetX(), new_cell->GetY());
+				glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
+				glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
+				// glRotatei();
+				draw_square();
+				glPopMatrix();
+			}
+		}
+}
+
+void draw_segment() {
+	glRectf(.0f, .0f, 1.0f, -1.0f);
+}
+
+void draw_snake() {
+	unsigned int** positions = snake->GetSnakePosition();
+	for(int i = 0; i < snake->GetLength(); i++) {
+		glPushMatrix()
+			glTranslatef(positions[i][1], positions[i][2], .0f);
+			glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
+			draw_segment();
+		glPopMatrix();
+	}
+
+	for ( int i = 0; i < snake->GetLength(); i++) {
+		delete [] positions[i];
+	}
+	delete [] positions;
+}
 
 void keyboard(unsigned char key, int, int) {
     switch(key) {
-        case 'q': exit(0); break;   // Press q to force exit application
+        case 'q': 	grid->Delete();
+					snake->Delete();
+					delete grid;
+					delete snake;
+					exit(0); break;   // Press q to force exit application
     }
     glutPostRedisplay();
 }
@@ -47,19 +111,19 @@ void keyboard(unsigned char key, int, int) {
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    gluLookAt(0, 0, 1,    // Eye position
-              0, 0, 0,      // Ref point
-              0, 1, 0       // Up vector
-    );
 
 	glColor3f(1.0f, 1.0f, 1.0f);
+	// Draw the separator between the HUD and play area
 	glBegin(GL_LINES);
 		glVertex2f(-h_limit, grid_top + screen_padding);
 		glVertex2f(h_limit, grid_top + screen_padding);
 	glEnd();
-	
+
+	glMatrixMode(GL_MODELVIEW);
+		// Draw the grid on which the snake and pallets will be displayed
+		draw_grid();
+		// Draw the snake
+		draw_snake();
     glutSwapBuffers();
 }
 
@@ -77,7 +141,7 @@ void init(int argc, char* argv[])
         
     // }
 	
-    // Set orthographic viewing
+    // Set viewport size (=scren size) and orthographic viewing
 	glViewport(0, 0, screen_width, screen_height);
 	glMatrixMode(GL_PROJECTION); 
 	glLoadIdentity();
@@ -86,52 +150,53 @@ void init(int argc, char* argv[])
 	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
 	gluOrtho2D(-h_limit, h_limit, -v_limit, v_limit);
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 	glClearColor(.0f, 0.2f, .0f, 1.0f);
 }
 
 int main(int argc, char* argv[]) {
-	screen_height = arena_size + screen_padding + hud_height;
-	screen_width = arena_size + screen_padding;
-	h_limit = screen_width / 2;
-	v_limit = screen_height / 2;
-	grid_left = -h_limit + screen_padding;
-	grid_right = h_limit - screen_padding;
-	grid_top = v_limit - hud_height - screen_padding;
-	grid_bot = -v_limit + screen_padding; 
-	grid = new Grid(arena_size, grid_size, screen_padding,
-					grid_right,
-					grid_top);
-	
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
-	glutInitWindowSize(screen_width, screen_height);
-	glutInitWindowPosition(0, 0);
-    glutCreateWindow("Snake");
+	// For a properly working game, grid order must be greater than 5
+	if(grid_size > 5) {
+		screen_height = arena_size + screen_padding + hud_height;
+		screen_width = arena_size + screen_padding;
+		h_limit = screen_width / 2;
+		v_limit = screen_height / 2;
+		grid_left = -h_limit + screen_padding;
+		grid_right = h_limit - screen_padding;
+		grid_top = v_limit - hud_height - screen_padding;
+		grid_bot = -v_limit + screen_padding;
+		grid = new Grid(arena_size, grid_size, screen_padding,
+						grid_left,
+						grid_top);
+		
+		glutInit(&argc, argv);
+		glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
+		glutInitWindowSize(screen_width, screen_height);
+		glutInitWindowPosition(0, 0);
+		glutCreateWindow("Snake");
 
-#ifndef __APPLE__
-	GLenum err = glewInit();
-	if (GLEW_OK!=err)
-	{
-		fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
-		exit(1);
-	}
-	fprintf(stderr, "Using GLEW %s\n", glewGetString(GLEW_VERSION));
-#endif
+	#ifndef __APPLE__
+		GLenum err = glewInit();
+		if (GLEW_OK!=err)
+		{
+			fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
+			exit(1);
+		}
+		fprintf(stderr, "Using GLEW %s\n", glewGetString(GLEW_VERSION));
+	#endif
 
-	glutKeyboardFunc(keyboard); 
-	// glutReshapeFunc(reshape); 
-	glutDisplayFunc(display); 
-	// glutIdleFunc(idle); 
+		glutKeyboardFunc(keyboard); 
+		// glutReshapeFunc(reshape); 
+		glutDisplayFunc(display); 
+		// glutIdleFunc(idle); 
 
-	fprintf(stderr, "Open GL version %s\n", glGetString(GL_VERSION));
-	init(argc, argv); 
+		fprintf(stderr, "Open GL version %s\n", glGetString(GL_VERSION));
+		init(argc, argv); 
 
 
-	glutMainLoop(); 
+		glutMainLoop();
+	} else {
+		printf("Selected grid size (%d) is too small!", grid_size);
+	} 
 
 	return 0; 
 }

@@ -10,5 +10,6 @@ class Cell {
         Cell(float n_x, float n_y);
         float GetX();
         float GetY();
+        void Delete();
 };
 #endif

@@ -4,8 +4,8 @@
 #include "cell.h"
 
 class Grid {
-    float cell_size;       // The size of the side of a cell
-    unsigned int grid_size;         // The number of cells on one grid row
+    int cell_size;       // The size of the side of a cell
+    unsigned int grid_size;// The number of cells on one grid row
     Cell*** cells;    // Array containing the coordinates of cells
 
     // Generates cell coordinates based on coordinates of first cell
@@ -19,5 +19,6 @@ class Grid {
         unsigned int GetGridSize();
         float GetCellSize();
         Cell* GetCellAt(int i, int j);
+        void Delete();
 };
 #endif
