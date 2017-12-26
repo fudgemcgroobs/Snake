@@ -25,6 +25,7 @@ void Snake::AddSegment() {
     Segment* s = new Segment(length);
     tail->SetNext(s);
     s->SetPrev(tail);
+    s->SetPosition(tail->GetX(), tail->GetY(), tail->GetDirection());
     tail = s;
 }
 
@@ -39,7 +40,64 @@ void Snake::Delete() {
 }
 
 void Snake::SetDirection(Direction d) {
-    head->SetDirection(d);
+    switch(d) {
+        case UP:
+            if(head->GetDirection() != DOWN) {
+                head->SetDirection(d);
+            }
+            break;
+        case RIGHT:
+            if(head->GetDirection() != LEFT) {
+                head->SetDirection(d);
+            }
+            break;
+        case DOWN:
+            if(head->GetDirection() != UP) {
+                head->SetDirection(d);
+            }
+            break;
+        case LEFT:
+            if(head->GetDirection() != RIGHT) {
+                head->SetDirection(d);
+            }
+            break;
+    }
+}
+
+bool Snake::Bite() {
+     Segment* s;
+    if(head != NULL) {
+       s = head->GetNext();
+    } else {
+        return true;
+    }
+    int x;
+    int y;
+    switch(head->GetDirection()) {
+        case UP:
+            x = head->GetX();
+            y = head->GetY() - 1;
+            break;
+        case RIGHT:
+            x = head->GetX() + 1;
+            y = head->GetY();
+            break;
+        case DOWN:
+            x = head->GetX();
+            y = head->GetY() + 1;
+            break;
+        case LEFT:
+            x = head->GetX() - 1;
+            y = head->GetY();
+            break;
+    }
+    while(s != NULL) {
+        if(s->GetX() == x && s->GetY() == y) {
+            return true;
+        }
+        s = s->GetNext();
+    }
+    return false;
 }
 
 unsigned int Snake::GetLength() {

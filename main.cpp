@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
+#include <string>
 #include "grid.h"
 #include "snake.h"
 #include "pallet.h"
@@ -50,15 +51,29 @@ unsigned int make_bitmap_text() {
 	return handle_base;
 }
 
-void draw_text(const char* s){
+void draw_text(const char* s) {
 	int len = strlen(s);
+	for (int i = 0; i < len; i++) {
+		glutStrokeCharacter(GLUT_STROKE_ROMAN, s[i]);
+	}
+}
+void draw_text(std::string s) {
+	int len = s.length();
 	for (int i = 0; i < len; i++) {
 		glutStrokeCharacter(GLUT_STROKE_ROMAN, s[i]);
 	}
 }
 
 float str_width(const char* s) {
-	int len = strlen(s) ;
+	int len = strlen(s);
+	int total_width = 0;
+	for(int i = 0; i < len; i++) {	
+		total_width += glutStrokeWidth(GLUT_STROKE_ROMAN, s[i]) ;
+	}
+	return total_width;
+}
+float str_width(std::string s) {
+	int len = s.length();
 	int total_width = 0;
 	for(int i = 0; i < len; i++) {	
 		total_width += glutStrokeWidth(GLUT_STROKE_ROMAN, s[i]) ;
@@ -140,31 +155,46 @@ void draw_state() {
 		text = "Eat the Pallets!";
 	}
 	glPushMatrix();
-		float h_center_offset = str_width(text)/(2/text_size);
+		float h_center_offset = -str_width(text)/(2/text_size);
 		float v_center_offset = v_limit - screen_padding - (hud_height/2);
-		glTranslatef(.0f - h_center_offset, .0f + v_center_offset, .0f);
-		glScalef(text_size, text_size, 1.0f); // this will work
+		glTranslatef(.0f + h_center_offset, .0f + v_center_offset, .0f);
+		glScalef(text_size, text_size, 1.0f);
+		draw_text(text);
+	glPopMatrix();
+}
+
+void draw_score() {
+	std::string text("Score: ");
+	text.append(std::to_string(snake->GetScore()));
+
+	glPushMatrix();
+		float h_center_offset = -h_limit + screen_padding;
+		float v_center_offset = v_limit - screen_padding - (hud_height/2);
+		glTranslatef(.0f + h_center_offset, .0f + v_center_offset, .0f);
+		glScalef(text_size, text_size, 1.0f);
 		draw_text(text);
 	glPopMatrix();
 }
 
 void check_head_collisions() {
 	// If head collide with body
-	// if(snake->Bite()) {
-	// 	running = false;
-	// 	game_over = true;
-	// }
+	if(snake->Bite() && running) {
+		running = false;
+		game_over = true;
+		glutPostRedisplay();
+	}
 	// If head collide w pallet
 	unsigned int** positions = snake->GetSnakePosition();
 	if(positions[0][0] == pallet->GetY() &&
-		positions[0][1] == pallet->GetX()) {
-			int palletX;
-			int palletY;
-			do{
-				palletX = (int) ( rand() % ( grid_size - 1 ));
-				palletY = (int) ( rand() % ( grid_size - 1 ));
-			} while(!pallet->Reposition(palletX, palletY));
-		}
+			positions[0][1] == pallet->GetX()) {
+		int palletX;
+		int palletY;
+		do{
+			palletX = (int) ( rand() % ( grid_size - 1 ));
+			palletY = (int) ( rand() % ( grid_size - 1 ));
+		} while(!pallet->Reposition(palletX, palletY));
+		snake->EatPallet();
+	}
 }
 
 void keyboard(unsigned char key, int, int) {
@@ -219,8 +249,7 @@ void display() {
 		//draw HUD text
 		glColor3f(1.0f, 1.0f, 1.0f);
 		draw_state();
-
-		check_head_collisions();
+		draw_score();
     glutSwapBuffers();
 }
 
@@ -234,6 +263,7 @@ void idle() {
 		}
 		glutPostRedisplay();
 	}
+	check_head_collisions();
 }
 
 void init(int argc, char* argv[])

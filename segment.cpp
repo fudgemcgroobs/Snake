@@ -55,21 +55,24 @@ void Segment::Move() {
     p_x = x;
     p_y = y;
     p_dir = dir;
-    switch(dir) {
-        case UP:
-            y -= 1;
-            break;
-        case RIGHT:
-            x += 1;
-            break;
-        case DOWN:
-            y += 1;
-            break;
-        case LEFT:
-            x -= 1;
-            break;
-    }
-    if(!head) {
+    if(head) {
+        switch(dir) {
+            case UP:
+                y -= 1;
+                break;
+            case RIGHT:
+                x += 1;
+                break;
+            case DOWN:
+                y += 1;
+                break;
+            case LEFT:
+                x -= 1;
+                break;
+        }
+    } else {
+        x = prev->GetPX();
+        y = prev->GetPY();
         if(prev != NULL) {
             dir = prev->GetPDirection();
         } else {
