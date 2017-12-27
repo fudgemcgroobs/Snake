@@ -29,11 +29,13 @@ float grid_right;		// The right edge of the grid (x-coordinate)
 float grid_top;			// The top edge of the grid (y-coordinate)
 float grid_bot;			// The bottom edge of the grid (y-coordinate)
 float text_size = .2f;
+bool menu = true;
 bool running = false;
 bool game_over = false;
 bool moved = false;
 bool loop = true;
-int ticks = 0;
+int ticks;
+int menu_screen;
 unsigned int grid_size = 30;	// The order of the grid/matrix. Must be >5
 unsigned int difficulty = 0;		// The current difficulty level
 unsigned int difficulty_step = 2;	// The required score change for difficulty increase
@@ -152,13 +154,7 @@ void draw_pallet() {
 	glPopMatrix();
 }
 
-void draw_state() {
-	const char* text;
-	if(game_over) {
-		text = "Game Over!";
-	} else {
-		text = "Eat the Pallets!";
-	}
+void draw_header(const char* text) {
 	glPushMatrix();
 		float h_center_offset = -str_width(text)/(2/text_size);
 		float v_center_offset = v_limit - screen_padding - (hud_height/2);
@@ -166,6 +162,16 @@ void draw_state() {
 		glScalef(text_size, text_size, 1.0f);
 		draw_text(text);
 	glPopMatrix();
+}
+
+void draw_state() {
+	const char* text;
+	if(game_over) {
+		text = "Game Over!";
+	} else {
+		text = "Eat the Pallets!";
+	}
+	draw_header(text);
 }
 
 void draw_score() {
@@ -206,25 +212,26 @@ void check_head_collisions() {
 	}
 }
 
+void quit_game() {
+	grid->Delete();
+	snake->Delete();
+	delete grid;
+	delete snake;
+	exit(0);
+}
+
 void keyboard(unsigned char key, int, int) {
     switch(key) {
-        case 'q': 	grid->Delete();
-					snake->Delete();
-					delete grid;
-					delete snake;
-					exit(0); break;   // Press q to force exit application
-		case 'p':	running = !running;
-					break;
-		case '`':   printf("Max x/y: %d\nHead at x:%d, y:%d\n",
-						grid_size,
-						snake->GetSnakePosition()[0][0],
-						snake->GetSnakePosition()[0][1]);
+        case 'q': 	quit_game(); break;   // Press q to force exit application
+		case 'p':	if(!menu) {
+						running = !running;
+					}
 					break;
     }
     glutPostRedisplay();
 }
 
-void SpecialKeys(int key, int x, int y) {
+void special_keys(int key, int x, int y) {
 	switch(key) {
 		case GLUT_KEY_UP:
 			if(moved) {
@@ -268,7 +275,45 @@ void SpecialKeys(int key, int x, int y) {
 // 	glutPostRedisplay();
 // }
 
-void display() {
+void display_main_menu() {
+	draw_header("Main Menu");
+}
+
+void display_options() {
+	draw_header("Options");
+}
+
+void display_instructions() {
+	draw_header("Instructions");
+}
+
+void display_gui() {
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+
+	glColor3f(1.0f, 1.0f, 1.0f);
+	// Draw the separator between the HUD and play area
+	glBegin(GL_LINES);
+		glVertex2f(-h_limit, grid_top + screen_padding);
+		glVertex2f(h_limit, grid_top + screen_padding);
+	glEnd();
+
+	glMatrixMode(GL_MODELVIEW);
+	if(menu_screen == 0) {
+		display_main_menu();
+	} else if(menu_screen == 1) {
+		display_options();
+	} else if(menu_screen == 2) {
+		display_instructions();
+	} else if(menu_screen == 3) {
+		menu = false;
+		running = true;
+	} else if(menu_screen == 4) {
+		quit_game();
+	}
+	glutSwapBuffers();
+}
+
+void display_game() {
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 	glColor3f(1.0f, 1.0f, 1.0f);
@@ -293,6 +338,14 @@ void display() {
     glutSwapBuffers();
 }
 
+void display() {
+	if(menu) {
+		display_gui();
+	} else {
+		display_game();
+	}
+}
+
 void idle() {
 	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
 	if(running) {
@@ -310,6 +363,10 @@ void idle() {
 	}
 }
 
+void mouse_action(int button, int state, int x, int y) {
+	
+}
+
 void init_structs() {
 	screen_height = arena_size + screen_padding + hud_height;
 	screen_width = arena_size + screen_padding;
@@ -322,12 +379,19 @@ void init_structs() {
 	grid = new Grid(arena_size, grid_size, screen_padding,
 					grid_left,
 					grid_top);
-	running = true;
 	snake = new Snake(3, 2, grid_size, loop);
 	srand(time(NULL));
 	int palletX = (int) ( rand() % ( grid_size - 1 ));
 	int palletY = (int) ( rand() % ( grid_size - 1 ));
 	pallet = new Pallet(palletX, palletY);
+	ticks = 0;
+	menu_screen = 0;
+	float v_center_offset = v_limit - hud_height - screen_padding;
+	buttonList->Refresh(.0f - v_center_offset);
+	buttonList->AddButton("Play", 3);
+	buttonList->AddButton("Options", 1);
+	buttonList->AddButton("Instructions", 2)
+	buttonList->AddButton("Quit", 4);
 }
 
 void init_gl(int argc, char* argv[]) {
@@ -352,7 +416,7 @@ void init_gl(int argc, char* argv[]) {
 
 int main(int argc, char* argv[]) {
 	// For a properly working game, grid order must be greater than 5
-	if(grid_size > 5) {
+	if(grid_size > 5 && arena_size > 200) {
 		init_structs();
 		glutInit(&argc, argv);
 		glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
@@ -370,10 +434,11 @@ int main(int argc, char* argv[]) {
 	#endif
 
 		glutKeyboardFunc(keyboard); 
-		glutSpecialFunc(SpecialKeys);
+		glutSpecialFunc(special_keys);
+		glutMouseFunc(mouse_action);
 		// glutReshapeFunc(reshape); 
-		glutDisplayFunc(display); 
-		glutIdleFunc(idle); 
+		glutDisplayFunc(display);
+		glutIdleFunc(idle);
 
 		fprintf(stderr, "Open GL version %s\n", glGetString(GL_VERSION));
 		init_gl(argc, argv); 
@@ -381,7 +446,8 @@ int main(int argc, char* argv[]) {
 
 		glutMainLoop();
 	} else {
-		printf("Selected grid size (%d) is too small!", grid_size);
+		printf("Selected grid size (%d) or arena size (%d) are too small!",
+				grid_size, arena_size);
 	} 
 
 	return 0; 
