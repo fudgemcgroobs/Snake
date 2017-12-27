@@ -24,12 +24,14 @@ class Segment {
         void SetNext(Segment* n);
         void SetHead(bool h);
         void SetDirection(Direction d);
+        void SetX(int n_x);
+        void SetY(int n_y);
         void Move();    // Move in direction end reset x/y
         void Delete();
-        unsigned int GetX();
-        unsigned int GetY();
-        unsigned int GetPX();
-        unsigned int GetPY();
+        int GetX();
+        int GetY();
+        int GetPX();
+        int GetPY();
         unsigned int GetOrder();
         Direction GetDirection();
         Direction GetPDirection();

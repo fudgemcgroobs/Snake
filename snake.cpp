@@ -1,11 +1,11 @@
 #include "snake.h"
 #include <stdio.h>
 
-Snake::Snake(int headX, int headY, int limit) {
+Snake::Snake(int headX, int headY, int n_limit, bool n_loop) {
     length = 3;
     score = 0;
-    x_limit = limit;
-    y_limit = limit;
+    limit = n_limit;
+    loop = n_loop;
 
     head = new Segment(1, true);
     Segment* s = new Segment(2);
@@ -123,16 +123,24 @@ unsigned int Snake::Move() {
     Segment* s = head;
     while(s != NULL) {
         s->Move();
-        if( s->GetX() >= x_limit ) {
-            return s->GetOrder();
+        if( s->GetX() >= limit ) {
+            if(loop) {
+                s->SetX(0);
+            } else return s->GetOrder();
         } else if( s->GetX() < 0 ) {
-            return s->GetOrder();
+            if(loop) {
+                s->SetX(limit - 1);
+            } else return s->GetOrder();
         }
 
-        if( s->GetY() >= x_limit ) {
-            return s->GetOrder();
+        if( s->GetY() >= limit ) {
+            if(loop) {
+                s->SetY(0);
+            } else return s->GetOrder();
         } else if( s->GetY() < 0 ) {
-            return s->GetOrder();
+            if(loop) {
+                s->SetY(limit - 1);
+            } else return s->GetOrder();
         }
 
         s = s->GetNext();

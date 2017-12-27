@@ -51,6 +51,14 @@ void Segment::SetDirection(Direction d) {
     }
 }
 
+void Segment::SetX(int n_x) {
+    x = n_x;
+}
+
+void Segment:: SetY(int n_y) {
+    y = n_y;
+}
+
 void Segment::Move() {
     p_x = x;
     p_y = y;
@@ -83,16 +91,16 @@ void Segment::Move() {
 
 void Segment::Delete() {}
 
-unsigned int Segment::GetX() {
+int Segment::GetX() {
     return x;
 }
-unsigned int Segment::GetY() {
+int Segment::GetY() {
     return y;
 }
-unsigned int Segment::GetPX() {
+int Segment::GetPX() {
     return p_x;
 }
-unsigned int Segment::GetPY() {
+int Segment::GetPY() {
     return p_y;
 }
 

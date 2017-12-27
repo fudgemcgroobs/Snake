@@ -6,15 +6,15 @@
 class Snake {
     Segment* head;
     Segment* tail;
-    int x_limit;
-    int y_limit;
+    bool loop;
+    int limit;
     unsigned int length;
     unsigned int score;
     void AddSegment();
 
     public:
         Snake();
-        Snake(int headX, int headY, int limit);
+        Snake(int headX, int headY, int n_limit, bool n_loop);
         void Delete();
         bool SetDirection(Direction d);
         bool Bite();

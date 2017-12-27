@@ -32,6 +32,7 @@ float text_size = .2f;
 bool running = false;
 bool game_over = false;
 bool moved = false;
+bool loop = true;
 int ticks = 0;
 unsigned int grid_size = 30;	// The order of the grid/matrix. Must be >5
 unsigned int difficulty = 0;		// The current difficulty level
@@ -214,6 +215,11 @@ void keyboard(unsigned char key, int, int) {
 					exit(0); break;   // Press q to force exit application
 		case 'p':	running = !running;
 					break;
+		case '`':   printf("Max x/y: %d\nHead at x:%d, y:%d\n",
+						grid_size,
+						snake->GetSnakePosition()[0][0],
+						snake->GetSnakePosition()[0][1]);
+					break;
     }
     glutPostRedisplay();
 }
@@ -289,27 +295,42 @@ void display() {
 
 void idle() {
 	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
-	ticks++;
-	if( (ticks == max_delay - ( difficulty * delay_step )) && running) {
-		if(snake->Move() != -1) {
-			running = false;
-			game_over = true;
+	if(running) {
+		ticks++;
+		if( (ticks == max_delay - ( difficulty * delay_step ))) {
+			if(snake->Move() != -1) {
+				running = false;
+				game_over = true;
+			}
+			ticks = 0;
+			moved = true;
+			glutPostRedisplay();
 		}
-		ticks = 0;
-		moved = true;
-		glutPostRedisplay();
+		check_head_collisions();
 	}
-	check_head_collisions();
 }
 
-void init(int argc, char* argv[]) {	
+void init_structs() {
+	screen_height = arena_size + screen_padding + hud_height;
+	screen_width = arena_size + screen_padding;
+	h_limit = screen_width / 2;
+	v_limit = screen_height / 2;
+	grid_left = -h_limit + screen_padding;
+	grid_right = h_limit - screen_padding;
+	grid_top = v_limit - hud_height - screen_padding;
+	grid_bot = -v_limit + screen_padding;
+	grid = new Grid(arena_size, grid_size, screen_padding,
+					grid_left,
+					grid_top);
 	running = true;
-	snake = new Snake(3, 2, grid_size);
+	snake = new Snake(3, 2, grid_size, loop);
 	srand(time(NULL));
 	int palletX = (int) ( rand() % ( grid_size - 1 ));
 	int palletY = (int) ( rand() % ( grid_size - 1 ));
 	pallet = new Pallet(palletX, palletY);
-	
+}
+
+void init_gl(int argc, char* argv[]) {
 	// if (argc>3)
 	// 	g_program_obj = create_and_compile_shaders(argv[1], argv[2], argv[3]);
 
@@ -332,18 +353,7 @@ void init(int argc, char* argv[]) {
 int main(int argc, char* argv[]) {
 	// For a properly working game, grid order must be greater than 5
 	if(grid_size > 5) {
-		screen_height = arena_size + screen_padding + hud_height;
-		screen_width = arena_size + screen_padding;
-		h_limit = screen_width / 2;
-		v_limit = screen_height / 2;
-		grid_left = -h_limit + screen_padding;
-		grid_right = h_limit - screen_padding;
-		grid_top = v_limit - hud_height - screen_padding;
-		grid_bot = -v_limit + screen_padding;
-		grid = new Grid(arena_size, grid_size, screen_padding,
-						grid_left,
-						grid_top);
-
+		init_structs();
 		glutInit(&argc, argv);
 		glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
 		glutInitWindowSize(screen_width, screen_height);
@@ -352,8 +362,7 @@ int main(int argc, char* argv[]) {
 
 	#ifndef __APPLE__
 		GLenum err = glewInit();
-		if (GLEW_OK!=err)
-		{
+		if(GLEW_OK != err) {
 			fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
 			exit(1);
 		}
@@ -367,7 +376,7 @@ int main(int argc, char* argv[]) {
 		glutIdleFunc(idle); 
 
 		fprintf(stderr, "Open GL version %s\n", glGetString(GL_VERSION));
-		init(argc, argv); 
+		init_gl(argc, argv); 
 
 
 		glutMainLoop();
