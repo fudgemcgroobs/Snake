@@ -34,8 +34,11 @@ bool game_over = false;
 bool moved = false;
 int ticks = 0;
 unsigned int grid_size = 30;	// The order of the grid/matrix. Must be >5
-unsigned int difficulty = 1;			// The current difficulty level
-unsigned int difficulty_step = 5;	// The required score change for difficulty increase
+unsigned int difficulty = 0;		// The current difficulty level
+unsigned int difficulty_step = 2;	// The required score change for difficulty increase
+unsigned int max_difficulty = 9;
+unsigned int delay_step = 10;
+unsigned int max_delay = 140;
 unsigned int g_bitmap_text_handle = 0;
 Grid* grid;
 Snake* snake;
@@ -195,6 +198,10 @@ void check_head_collisions() {
 			palletY = (int) ( rand() % ( grid_size - 1 ));
 		} while(!pallet->Reposition(palletX, palletY));
 		snake->EatPallet();
+		if(difficulty < max_difficulty && 
+				snake->GetScore() >= difficulty * difficulty_step) {
+			difficulty++;
+		}
 	}
 }
 
@@ -282,12 +289,13 @@ void display() {
 
 void idle() {
 	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
-	ticks = (ticks + 1) % 81;
-	if(ticks == 85 - ( difficulty * 5 ) && running) {
+	ticks++;
+	if( (ticks == max_delay - ( difficulty * delay_step )) && running) {
 		if(snake->Move() != -1) {
 			running = false;
 			game_over = true;
 		}
+		ticks = 0;
 		moved = true;
 		glutPostRedisplay();
 	}
