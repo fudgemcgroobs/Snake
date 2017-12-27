@@ -16,7 +16,7 @@ class Snake {
         Snake();
         Snake(int headX, int headY, int limit);
         void Delete();
-        void SetDirection(Direction d);
+        bool SetDirection(Direction d);
         bool Bite();
         unsigned int GetLength();
         unsigned int GetScore();

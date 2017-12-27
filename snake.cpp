@@ -39,29 +39,34 @@ void Snake::Delete() {
     }
 }
 
-void Snake::SetDirection(Direction d) {
+bool Snake::SetDirection(Direction d) {
     switch(d) {
         case UP:
             if(head->GetDirection() != DOWN) {
                 head->SetDirection(d);
+                return true;
             }
             break;
         case RIGHT:
             if(head->GetDirection() != LEFT) {
                 head->SetDirection(d);
+                return true;
             }
             break;
         case DOWN:
             if(head->GetDirection() != UP) {
                 head->SetDirection(d);
+                return true;
             }
             break;
         case LEFT:
             if(head->GetDirection() != RIGHT) {
                 head->SetDirection(d);
+                return true;
             }
             break;
     }
+    return false;
 }
 
 bool Snake::Bite() {

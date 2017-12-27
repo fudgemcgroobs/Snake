@@ -31,6 +31,7 @@ float grid_bot;			// The bottom edge of the grid (y-coordinate)
 float text_size = .2f;
 bool running = false;
 bool game_over = false;
+bool moved = false;
 int ticks = 0;
 unsigned int grid_size = 30;	// The order of the grid/matrix. Must be >5
 unsigned int difficulty = 1;			// The current difficulty level
@@ -204,16 +205,42 @@ void keyboard(unsigned char key, int, int) {
 					delete grid;
 					delete snake;
 					exit(0); break;   // Press q to force exit application
+		case 'p':	running = !running;
+					break;
     }
     glutPostRedisplay();
 }
 
 void SpecialKeys(int key, int x, int y) {
 	switch(key) {
-		case GLUT_KEY_UP: snake->SetDirection(UP); break;
-		case GLUT_KEY_RIGHT: snake->SetDirection(RIGHT); break;
-		case GLUT_KEY_DOWN: snake->SetDirection(DOWN); break;
-		case GLUT_KEY_LEFT: snake->SetDirection(LEFT); break;
+		case GLUT_KEY_UP:
+			if(moved) {
+				if(snake->SetDirection(UP)) {
+					moved = false;
+				}
+			}
+			break;
+		case GLUT_KEY_RIGHT:
+			if(moved) {
+				if(snake->SetDirection(RIGHT)) {
+					moved = false;
+				}
+			}
+			break;
+		case GLUT_KEY_DOWN:
+			if(moved) {
+				if(snake->SetDirection(DOWN)) {
+					moved = false;
+				}
+			}	
+			break;
+		case GLUT_KEY_LEFT:
+			if(moved) {
+				if(snake->SetDirection(LEFT)) {
+					moved = false;
+				}
+			}
+			break;
 	}
 }
 
@@ -255,12 +282,13 @@ void display() {
 
 void idle() {
 	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
-	ticks = (ticks + 1) % 41;
-	if(ticks == 45 - ( difficulty * 5 ) && running) {
+	ticks = (ticks + 1) % 81;
+	if(ticks == 85 - ( difficulty * 5 ) && running) {
 		if(snake->Move() != -1) {
 			running = false;
 			game_over = true;
 		}
+		moved = true;
 		glutPostRedisplay();
 	}
 	check_head_collisions();
