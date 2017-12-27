@@ -17,7 +17,7 @@
 #include "snake.h"
 #include "pallet.h"
 
-float arena_size = 512.0f;		// The size, in world units, of the play area
+float arena_size = 1000.0f;		// The size, in world units, of the play area
 float screen_padding = 5.0f;	// In world coordinates/sizes
 float hud_height = 50.0f;		// The height of the HUD in the world
 float screen_height;	// The total height of the viewport and screen
@@ -32,7 +32,7 @@ float text_size = .2f;
 bool running = false;
 bool game_over = false;
 int ticks = 0;
-unsigned int grid_size = 20;	// The order of the grid/matrix. Must be >5
+unsigned int grid_size = 30;	// The order of the grid/matrix. Must be >5
 unsigned int difficulty = 1;			// The current difficulty level
 unsigned int difficulty_step = 5;	// The required score change for difficulty increase
 unsigned int g_bitmap_text_handle = 0;
@@ -266,8 +266,7 @@ void idle() {
 	check_head_collisions();
 }
 
-void init(int argc, char* argv[])
-{	
+void init(int argc, char* argv[]) {	
 	running = true;
 	snake = new Snake(3, 2, grid_size);
 	srand(time(NULL));
