@@ -158,6 +158,5 @@ unsigned int** Snake::GetSnakePosition() {
         positions[i][1] = s->GetX();
         s = s->GetNext();
     }
-
     return positions;
 }

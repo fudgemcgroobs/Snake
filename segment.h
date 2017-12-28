@@ -1,7 +1,7 @@
 #ifndef SEGMENT_H
 #define SEGMENT_H
 
-enum Direction {UP, RIGHT, DOWN, LEFT};
+enum Direction { UP, RIGHT, DOWN, LEFT };
 
 class Segment {
     Segment* prev;

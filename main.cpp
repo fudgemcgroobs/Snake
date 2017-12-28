@@ -16,8 +16,9 @@
 #include "grid.h"
 #include "snake.h"
 #include "pallet.h"
+#include "buttonlist.h"
 
-float arena_size = 1000.0f;		// The size, in world units, of the play area
+float arena_size = 600.0f;		// The size, in world units, of the play area
 float screen_padding = 5.0f;	// In world coordinates/sizes
 float hud_height = 50.0f;		// The height of the HUD in the world
 float screen_height;	// The total height of the viewport and screen
@@ -46,6 +47,7 @@ unsigned int g_bitmap_text_handle = 0;
 Grid* grid;
 Snake* snake;
 Pallet* pallet;
+ButtonList* buttonList;
 
 unsigned int make_bitmap_text() {
 	unsigned int handle_base = glGenLists(256); 
@@ -88,6 +90,10 @@ float str_width(std::string s) {
 	return total_width;
 }
 
+int normalize(int x, int a1, int a2, int b1, int b2) {
+	return b1 + ( (x - a1) * (b2 - b1) / (a2 - a1) );
+}
+
 /*
 * Method that draws a square of side size 1.0
 * scaling on x or y by a number N will result in a respective side of size N
@@ -114,11 +120,11 @@ void draw_grid() {
 	for(int i = 0; i < grid_size; i++) {
 			for(int j = 0; j < grid_size; j++) {
 				glPushMatrix();
-				Cell* new_cell = grid->GetCellAt(i, j);
-				glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
-				glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
-				// glRotatei();
-				draw_square();
+					Cell* new_cell = grid->GetCellAt(i, j);
+					glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
+					glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
+					// glRotatei();
+					draw_square();
 				glPopMatrix();
 			}
 		}
@@ -277,6 +283,7 @@ void special_keys(int key, int x, int y) {
 
 void display_main_menu() {
 	draw_header("Main Menu");
+	buttonList->DrawButtons();
 }
 
 void display_options() {
@@ -298,16 +305,16 @@ void display_gui() {
 	glEnd();
 
 	glMatrixMode(GL_MODELVIEW);
-	if(menu_screen == 0) {
+	if(menu_screen == MAIN) {
 		display_main_menu();
-	} else if(menu_screen == 1) {
+	} else if(menu_screen == OPTIONS) {
 		display_options();
-	} else if(menu_screen == 2) {
+	} else if(menu_screen == INSTRUCTIONS) {
 		display_instructions();
-	} else if(menu_screen == 3) {
+	} else if(menu_screen == GAME) {
 		menu = false;
 		running = true;
-	} else if(menu_screen == 4) {
+	} else if(menu_screen == QUIT) {
 		quit_game();
 	}
 	glutSwapBuffers();
@@ -364,7 +371,44 @@ void idle() {
 }
 
 void mouse_action(int button, int state, int x, int y) {
-	
+	if(button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+		int** bounds = buttonList->GetButtonBounds();
+		x = normalize(x, 0, screen_width, -h_limit, h_limit);
+		y = normalize(y, 0, screen_height, v_limit, -v_limit);
+		printf("Mouse at x: %d, y: %d\n", x, y);
+		for(int i = 0; i < buttonList->GetCount(); i++) {
+			printf("Checking button %d\n", i);
+			printf("Bounds are:\n Top: %d\n Bot: %d\n Left: %d\n Right: %d\n",
+					bounds[i][0], bounds[i][1], bounds[i][2], bounds[i][3]);
+			if(y < bounds[i][0] && y > bounds[i][1] &&
+			   		x > bounds[i][2] && x < bounds[i][3]) {
+				printf("In bounds!");
+				menu_screen = bounds[i][4];
+				switch(menu_screen) {
+					case MAIN:
+						buttonList->Refresh();
+						buttonList->AddButton("Play", GAME);
+						buttonList->AddButton("Options", OPTIONS);
+						buttonList->AddButton("Instructions", INSTRUCTIONS);
+						buttonList->AddButton("Quit", QUIT);
+						break;
+					case GAME:
+						buttonList->Refresh();
+						menu = false;
+						running = true;
+						break;
+					case OPTIONS:
+						break;
+					case INSTRUCTIONS:
+						break;
+					case QUIT:
+						break;
+					case PAUSE:
+						break;
+				}
+			}
+		}
+	}
 }
 
 void init_structs() {
@@ -380,18 +424,20 @@ void init_structs() {
 					grid_left,
 					grid_top);
 	snake = new Snake(3, 2, grid_size, loop);
+
 	srand(time(NULL));
 	int palletX = (int) ( rand() % ( grid_size - 1 ));
 	int palletY = (int) ( rand() % ( grid_size - 1 ));
 	pallet = new Pallet(palletX, palletY);
 	ticks = 0;
+
 	menu_screen = 0;
-	float v_center_offset = v_limit - hud_height - screen_padding;
-	buttonList->Refresh(.0f - v_center_offset);
-	buttonList->AddButton("Play", 3);
-	buttonList->AddButton("Options", 1);
-	buttonList->AddButton("Instructions", 2)
-	buttonList->AddButton("Quit", 4);
+	int v_center_offset = v_limit - hud_height - screen_padding;
+	buttonList = new ButtonList(0 + v_center_offset, screen_width, 40);
+	buttonList->AddButton("Play", GAME);
+	buttonList->AddButton("Options", OPTIONS);
+	buttonList->AddButton("Instructions", INSTRUCTIONS);
+	buttonList->AddButton("Quit", QUIT);
 }
 
 void init_gl(int argc, char* argv[]) {
