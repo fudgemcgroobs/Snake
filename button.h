@@ -1,7 +1,7 @@
 #ifndef BUTTON_H
 #define BUTTON_H
 
-enum Destination { MAIN, OPTIONS, INSTRUCTIONS, QUIT, PAUSE, GAME };
+enum Destination { MAIN, OPTIONS, INSTRUCTIONS, QUIT, PAUSE, GAME, LOOP, GRID };
 
 class Button {
     float text_size;

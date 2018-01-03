@@ -7,8 +7,8 @@ ButtonList::ButtonList(int n_y, int screen_w, int ratio) {
     top_y = n_y;
     next_y = n_y;
     width = screen_w * ratio / 100;
-    pad = BUTTON_HEIGHT / 4;
     width = width < 100 ? 100 : width;
+    pad = BUTTON_HEIGHT / 4;
     count = 0;
 }
 
@@ -32,6 +32,16 @@ void ButtonList::AddButton(const char* name, Destination d) {
         tail = b;
     }
     count++;
+}
+
+void ButtonList::Delete() {
+    Button* b = head;
+    while(b != NULL) {
+        Button* n = b->GetNext();
+        b->Delete();
+        delete b;
+        b = n;
+    }
 }
 
 void ButtonList::DrawButtons() {

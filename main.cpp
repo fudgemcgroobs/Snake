@@ -37,7 +37,7 @@ bool moved = false;
 bool loop = true;
 int ticks;
 int menu_screen;
-unsigned int grid_size = 30;	// The order of the grid/matrix. Must be >5
+unsigned int grid_size = 15;	// The order of the grid/matrix. Must be >5
 unsigned int difficulty = 0;		// The current difficulty level
 unsigned int difficulty_step = 2;	// The required score change for difficulty increase
 unsigned int max_difficulty = 9;
@@ -221,8 +221,10 @@ void check_head_collisions() {
 void quit_game() {
 	grid->Delete();
 	snake->Delete();
+	buttonList->Delete();
 	delete grid;
 	delete snake;
+	delete buttonList;
 	exit(0);
 }
 
@@ -288,6 +290,7 @@ void display_main_menu() {
 
 void display_options() {
 	draw_header("Options");
+	buttonList->DrawButtons();
 }
 
 void display_instructions() {
@@ -375,17 +378,23 @@ void mouse_action(int button, int state, int x, int y) {
 		int** bounds = buttonList->GetButtonBounds();
 		x = normalize(x, 0, screen_width, -h_limit, h_limit);
 		y = normalize(y, 0, screen_height, v_limit, -v_limit);
-		printf("Mouse at x: %d, y: %d\n", x, y);
-		for(int i = 0; i < buttonList->GetCount(); i++) {
-			printf("Checking button %d\n", i);
-			printf("Bounds are:\n Top: %d\n Bot: %d\n Left: %d\n Right: %d\n",
-					bounds[i][0], bounds[i][1], bounds[i][2], bounds[i][3]);
+		int checks = buttonList->GetCount();
+
+		// char int_string[5];
+		// itoa(grid_size, int_string, 10);
+		// strcat(int_string, "\0");
+
+		// char grid_option[50];
+		// strcpy(grid_option, "Grid size: ");
+		// strcat(grid_option, int_string);
+		for(int i = 0; i < checks; i++) {
 			if(y < bounds[i][0] && y > bounds[i][1] &&
 			   		x > bounds[i][2] && x < bounds[i][3]) {
-				printf("In bounds!");
 				menu_screen = bounds[i][4];
 				switch(menu_screen) {
 					case MAIN:
+						printf("Clicked main\n");
+						fflush(stdout);
 						buttonList->Refresh();
 						buttonList->AddButton("Play", GAME);
 						buttonList->AddButton("Options", OPTIONS);
@@ -393,21 +402,68 @@ void mouse_action(int button, int state, int x, int y) {
 						buttonList->AddButton("Quit", QUIT);
 						break;
 					case GAME:
+						printf("Started game\n");
+						fflush(stdout);
 						buttonList->Refresh();
 						menu = false;
 						running = true;
 						break;
+					case GRID:
+						// if(grid_size < 30) {
+						// 	grid_size++;
+						// } else {
+						// 	grid_size = 15;
+						// }
+						// menu_screen = OPTIONS;
+						// itoa(grid_size, int_string, 10);
+						// strcat(int_string, "\0");
+
+						// strncpy(grid_option, "Grid size: ", sizeof(grid_option));
+						// strcat(grid_option, int_string);
+						goto options;
+						break;
+					case LOOP:
+						printf("Clicked loop option\n");
+						fflush(stdout);
+						loop = !loop;
+						menu_screen = OPTIONS;
+						goto options;
+						break;
 					case OPTIONS:
+						options:
+						printf("Clicked Options\n");
+						fflush(stdout);
+						fflush(stdout);
+						buttonList->Refresh();
+						buttonList->AddButton("Back", MAIN);
+						if(loop) {
+							buttonList->AddButton("Loop: ON", LOOP);
+						} else {
+							buttonList->AddButton("Loop: OFF", LOOP);
+						}
+						// printf("%s\n", grid_option);
+						// buttonList->AddButton(grid_option, GRID);
 						break;
 					case INSTRUCTIONS:
+						printf("Clicked instructions\n");
+						fflush(stdout);
 						break;
 					case QUIT:
+						printf("Clicked Quit\n");
+						fflush(stdout);
+						quit_game();
 						break;
 					case PAUSE:
+						printf("Now Pausing\n");
+						fflush(stdout);
 						break;
 				}
 			}
 		}
+		for ( int i = 0; i < checks; i++) {
+			delete [] bounds[i];
+		}
+		delete [] bounds;
 	}
 }
 
