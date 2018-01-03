@@ -39,10 +39,6 @@ void Snake::Delete() {
     }
 }
 
-void Snake::SetLoop(bool n_loop) {
-    loop = n_loop;
-}
-
 bool Snake::SetDirection(Direction d) {
     switch(d) {
         case UP:
@@ -74,9 +70,9 @@ bool Snake::SetDirection(Direction d) {
 }
 
 bool Snake::Bite() {
-    Segment* s;
+     Segment* s;
     if(head != NULL) {
-        s = head->GetNext();
+       s = head->GetNext();
     } else {
         return true;
     }

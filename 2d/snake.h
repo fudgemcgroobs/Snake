@@ -16,7 +16,6 @@ class Snake {
         Snake();
         Snake(int headX, int headY, int n_limit, bool n_loop);
         void Delete();
-        void SetLoop(bool n_loop);
         bool SetDirection(Direction d);
         bool Bite();
         unsigned int GetLength();

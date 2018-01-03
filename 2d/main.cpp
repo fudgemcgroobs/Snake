@@ -30,24 +30,6 @@ float grid_right;		// The right edge of the grid (x-coordinate)
 float grid_top;			// The top edge of the grid (y-coordinate)
 float grid_bot;			// The bottom edge of the grid (y-coordinate)
 float text_size = .2f;
-
-// Cube edges
-float c_r = 1.0f;
-float c_l = .0f;
-float c_t = .0f;
-float c_b = -1.0f;
-float c_f = 0.5f;
-float c_n = -0.5f;
-
-static float cube[6][4][3] = {
-	{{c_l, c_t, c_n}, {c_l, c_t, c_f}, {c_l, c_b, c_f}, {c_l, c_b, c_n}},
-	{{c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_r, c_b, c_f}, {c_r, c_b, c_n}},
-	{{c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_l, c_t, c_f}, {c_l, c_t, c_n}},
-	{{c_r, c_b, c_n}, {c_r, c_b, c_f}, {c_l, c_b, c_f}, {c_l, c_b, c_n}},
-	{{c_l, c_t, c_f}, {c_r, c_t, c_f}, {c_r, c_b, c_f}, {c_l, c_b, c_f}},
-	{{c_l, c_t, c_b}, {c_r, c_t, c_b}, {c_r, c_b, c_b}, {c_l, c_b, c_b}}
-};
-
 bool menu = true;
 bool running = false;
 bool game_over = false;
@@ -129,17 +111,6 @@ void draw_square() {
 			glVertex2fv(vertex[i]);
 		}
 	glEnd();
-}
-
-void draw_cube() {
-	glColor3f(1.0f, 1.0f, 1.0f);
-	for(size_t i = 0; i < 6; i++) {
-		glBegin(GL_LINE_LOOP);
-			for(size_t j = 0; j < 4; j++) {
-				glVertex3fv(cube[i][j]);
-			}
-		glEnd();
-	}
 }
 
 /*
@@ -363,11 +334,6 @@ void display_game() {
 	glEnd();
 
 	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	gluLookAt(0, 0, 2, // eye position
-			  0, 0, 0, // reference point
-			  0, 1, 0  // up vector
-		);
 		// Draw the grid on which the snake and pallets will be displayed
 		draw_grid();
 		// Draw the snake
@@ -460,7 +426,6 @@ void mouse_action(int button, int state, int x, int y) {
 						printf("Clicked loop option\n");
 						fflush(stdout);
 						loop = !loop;
-						snake->SetLoop(loop);
 						menu_screen = OPTIONS;
 						goto options;
 						break;
@@ -545,7 +510,7 @@ void init_gl(int argc, char* argv[]) {
 	glLoadIdentity();
 	// Specify a projection with this view volume, centred on origin 
 	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
-	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -3, 3);
+	gluOrtho2D(-h_limit, h_limit, -v_limit, v_limit);
 
 	glClearColor(.0f, 0.2f, .0f, 1.0f);
 	g_bitmap_text_handle = make_bitmap_text();
