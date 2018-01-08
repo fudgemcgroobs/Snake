@@ -157,9 +157,10 @@ unsigned int** Snake::GetSnakePosition() {
     positions = new unsigned int*[length];
     Segment* s = head;
     for(int i = 0; i < length && s != NULL; i++) {
-        positions[i] = new unsigned int[2];
+        positions[i] = new unsigned int[3];
         positions[i][0] = s->GetY();
         positions[i][1] = s->GetX();
+        positions[i][2] = s->GetDirection();
         s = s->GetNext();
     }
     return positions;

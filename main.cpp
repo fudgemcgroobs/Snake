@@ -17,6 +17,10 @@
 #include "snake.h"
 #include "pallet.h"
 #include "buttonlist.h"
+#include "load_and_bind_texture.h"
+
+enum snake_sides { HEADBOT, HEADFRONT, HEADSIDE, HEADTOP,
+					INTER, SEGMENT, TAIL, TURN, SIDENUM};
 
 float arena_size = 600.0f;		// The size, in world units, of the play area
 float screen_padding = 5.0f;	// In world coordinates/sizes
@@ -30,42 +34,48 @@ float grid_right;		// The right edge of the grid (x-coordinate)
 float grid_top;			// The top edge of the grid (y-coordinate)
 float grid_bot;			// The bottom edge of the grid (y-coordinate)
 float text_size = .2f;
+float extend;	// Size by which a 3D snake segment should be elongated	
 
-// Cube edges
+// Cube edges: Right, Left etc.
 float c_r = 1.0f;
 float c_l = .0f;
 float c_t = .0f;
 float c_b = -1.0f;
-float c_f = 0.5f;
-float c_n = -0.5f;
+float c_f = .0f;
+float c_n = -1.0f;
 
+// Coordinates of cube corners divided into sides
 static float cube[6][4][3] = {
-	{{c_l, c_t, c_n}, {c_l, c_t, c_f}, {c_l, c_b, c_f}, {c_l, c_b, c_n}},
-	{{c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_r, c_b, c_f}, {c_r, c_b, c_n}},
-	{{c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_l, c_t, c_f}, {c_l, c_t, c_n}},
-	{{c_r, c_b, c_n}, {c_r, c_b, c_f}, {c_l, c_b, c_f}, {c_l, c_b, c_n}},
-	{{c_l, c_t, c_f}, {c_r, c_t, c_f}, {c_r, c_b, c_f}, {c_l, c_b, c_f}},
-	{{c_l, c_t, c_b}, {c_r, c_t, c_b}, {c_r, c_b, c_b}, {c_l, c_b, c_b}}
+	{{c_l, c_t, c_n}, {c_l, c_t, c_f}, {c_l, c_b, c_f}, {c_l, c_b, c_n}}, // Left
+	{{c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_r, c_b, c_f}, {c_r, c_b, c_n}}, // Right
+	{{c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_l, c_t, c_f}, {c_l, c_t, c_n}}, // Top
+	{{c_r, c_b, c_n}, {c_r, c_b, c_f}, {c_l, c_b, c_f}, {c_l, c_b, c_n}}, // Bottom
+	{{c_l, c_t, c_f}, {c_r, c_t, c_f}, {c_r, c_b, c_f}, {c_l, c_b, c_f}}, // Far
+	{{c_l, c_t, c_b}, {c_r, c_t, c_b}, {c_r, c_b, c_b}, {c_l, c_b, c_b}}  // Near
 };
 
-bool menu = true;
-bool running = false;
-bool game_over = false;
-bool moved = false;
-bool loop = true;
-int ticks;
-int menu_screen;
+bool menu = true;		// If game is in menu
+bool running = false;	// If game is running at the moment
+bool game_over = false;	// If the game has been lost
+bool moved = false;		// If the snake has moved since the last direction change
+bool loop = true;		// If the snake is allowed to loop at edges of screen
+bool display_grid = false;
+int ticks;			// Ticks that have been counted. Resets depending on difficulty
+int menu_screen;	// The current menu screen (check Destination in button.h for options)
+int y_tilt = 0;
+int x_tilt = 0;
 unsigned int grid_size = 15;	// The order of the grid/matrix. Must be >5
 unsigned int difficulty = 0;		// The current difficulty level
 unsigned int difficulty_step = 2;	// The required score change for difficulty increase
 unsigned int max_difficulty = 9;
-unsigned int delay_step = 10;
-unsigned int max_delay = 140;
+unsigned int delay_step = 10;		// Tick difference between difficulties
+unsigned int max_delay = 140;		// The largest delay (in ticks) between snake steps
 unsigned int g_bitmap_text_handle = 0;
-Grid* grid;
-Snake* snake;
-Pallet* pallet;
-ButtonList* buttonList;
+unsigned int snake_tex[SIDENUM];
+Grid* grid;				// Stores grid cell coordinates
+Snake* snake;			// Stores snake information and allows snake movement
+Pallet* pallet;			// Stores food pallet info and provides pallet functionality
+ButtonList* buttonList;	// Stores GUI buttons and their information/effects
 
 unsigned int make_bitmap_text() {
 	unsigned int handle_base = glGenLists(256); 
@@ -76,6 +86,18 @@ unsigned int make_bitmap_text() {
 		glEndList();
 	}
 	return handle_base;
+}
+
+void load_and_bind_textures()
+{
+	snake_tex[HEADBOT] = load_and_bind_texture("./images/headbot.png");
+	snake_tex[HEADFRONT] = load_and_bind_texture("./images/headfront.png");
+	snake_tex[HEADSIDE] = load_and_bind_texture("./images/headside.png");
+	snake_tex[HEADTOP] = load_and_bind_texture("./images/headtop.png");
+	snake_tex[INTER] = load_and_bind_texture("./images/inter.png");
+	snake_tex[SEGMENT] = load_and_bind_texture("./images/segment.png");
+	snake_tex[TAIL] = load_and_bind_texture("./images/tail.png");
+	snake_tex[TURN] = load_and_bind_texture("./images/turn.png");
 }
 
 void draw_text(const char* s) {
@@ -152,25 +174,26 @@ void draw_grid() {
 					Cell* new_cell = grid->GetCellAt(i, j);
 					glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
 					glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
-					// glRotatei();
 					draw_square();
 				glPopMatrix();
 			}
 		}
 }
 
-void draw_segment() {
-	glRectf(.0f, .0f, 1.0f, -1.0f);
+void draw_3D_segment() {
+	glPushMatrix();
+		glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
+		draw_cube();
+	glPopMatrix();
 }
 
-void draw_snake() {
+void draw_3D_snake() {
 	unsigned int** positions = snake->GetSnakePosition();
 	for(int i = 0; i < snake->GetLength(); i++) {
 		glPushMatrix();
 			Cell* new_cell = grid->GetCellAt(positions[i][0], positions[i][1]);
 			glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
-			glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
-			draw_segment();
+			draw_3D_segment();
 		glPopMatrix();
 	}
 
@@ -264,6 +287,10 @@ void keyboard(unsigned char key, int, int) {
 						running = !running;
 					}
 					break;
+		case 'y': 	y_tilt--; break;
+		case 'Y': 	y_tilt++; break;
+		case 'x': 	x_tilt--; break;
+		case 'X':	x_tilt++; break;
     }
     glutPostRedisplay();
 }
@@ -364,14 +391,16 @@ void display_game() {
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(0, 0, 2, // eye position
+	gluLookAt(x_tilt, y_tilt, 2, // eye position
 			  0, 0, 0, // reference point
 			  0, 1, 0  // up vector
 		);
 		// Draw the grid on which the snake and pallets will be displayed
-		draw_grid();
+		if(display_grid) {
+			draw_grid();
+		}
 		// Draw the snake
-		draw_snake();
+		draw_3D_snake();
 		// Draw the pallet
 		glColor3f(.3f, .6f, .3f);
 		draw_pallet();
@@ -414,21 +443,12 @@ void mouse_action(int button, int state, int x, int y) {
 		y = normalize(y, 0, screen_height, v_limit, -v_limit);
 		int checks = buttonList->GetCount();
 
-		// char int_string[5];
-		// itoa(grid_size, int_string, 10);
-		// strcat(int_string, "\0");
-
-		// char grid_option[50];
-		// strcpy(grid_option, "Grid size: ");
-		// strcat(grid_option, int_string);
 		for(int i = 0; i < checks; i++) {
 			if(y < bounds[i][0] && y > bounds[i][1] &&
 			   		x > bounds[i][2] && x < bounds[i][3]) {
 				menu_screen = bounds[i][4];
 				switch(menu_screen) {
 					case MAIN:
-						printf("Clicked main\n");
-						fflush(stdout);
 						buttonList->Refresh();
 						buttonList->AddButton("Play", GAME);
 						buttonList->AddButton("Options", OPTIONS);
@@ -436,29 +456,16 @@ void mouse_action(int button, int state, int x, int y) {
 						buttonList->AddButton("Quit", QUIT);
 						break;
 					case GAME:
-						printf("Started game\n");
-						fflush(stdout);
 						buttonList->Refresh();
 						menu = false;
 						running = true;
 						break;
 					case GRID:
-						// if(grid_size < 30) {
-						// 	grid_size++;
-						// } else {
-						// 	grid_size = 15;
-						// }
-						// menu_screen = OPTIONS;
-						// itoa(grid_size, int_string, 10);
-						// strcat(int_string, "\0");
-
-						// strncpy(grid_option, "Grid size: ", sizeof(grid_option));
-						// strcat(grid_option, int_string);
+						display_grid = !display_grid;
+						menu_screen = OPTIONS;
 						goto options;
 						break;
 					case LOOP:
-						printf("Clicked loop option\n");
-						fflush(stdout);
 						loop = !loop;
 						snake->SetLoop(loop);
 						menu_screen = OPTIONS;
@@ -466,9 +473,6 @@ void mouse_action(int button, int state, int x, int y) {
 						break;
 					case OPTIONS:
 						options:
-						printf("Clicked Options\n");
-						fflush(stdout);
-						fflush(stdout);
 						buttonList->Refresh();
 						buttonList->AddButton("Back", MAIN);
 						if(loop) {
@@ -476,21 +480,18 @@ void mouse_action(int button, int state, int x, int y) {
 						} else {
 							buttonList->AddButton("Loop: OFF", LOOP);
 						}
-						// printf("%s\n", grid_option);
-						// buttonList->AddButton(grid_option, GRID);
+						if(display_grid) {
+							buttonList->AddButton("Grid: ON", GRID);
+						} else {
+							buttonList->AddButton("Grid: OFF", GRID);							
+						}
 						break;
 					case INSTRUCTIONS:
-						printf("Clicked instructions\n");
-						fflush(stdout);
 						break;
 					case QUIT:
-						printf("Clicked Quit\n");
-						fflush(stdout);
 						quit_game();
 						break;
 					case PAUSE:
-						printf("Now Pausing\n");
-						fflush(stdout);
 						break;
 				}
 			}
@@ -514,6 +515,7 @@ void init_structs() {
 	grid = new Grid(arena_size, grid_size, screen_padding,
 					grid_left,
 					grid_top);
+	extend = grid->GetCellSize() / 2;
 	snake = new Snake(3, 2, grid_size, loop);
 
 	srand(time(NULL));
@@ -532,20 +534,15 @@ void init_structs() {
 }
 
 void init_gl(int argc, char* argv[]) {
-	// if (argc>3)
-	// 	g_program_obj = create_and_compile_shaders(argv[1], argv[2], argv[3]);
+	load_and_bind_textures();
 
-    // if (g_program_obj) {
-        
-    // }
-	
     // Set viewport size (=scren size) and orthographic viewing
 	glViewport(0, 0, screen_width, screen_height);
 	glMatrixMode(GL_PROJECTION); 
 	glLoadIdentity();
 	// Specify a projection with this view volume, centred on origin 
 	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
-	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -3, 3);
+	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -10000, 10000);
 
 	glClearColor(.0f, 0.2f, .0f, 1.0f);
 	g_bitmap_text_handle = make_bitmap_text();

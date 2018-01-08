@@ -79,9 +79,9 @@ void Segment::Move() {
                 break;
         }
     } else {
-        x = prev->GetPX();
-        y = prev->GetPY();
         if(prev != NULL) {
+            x = prev->GetPX();
+            y = prev->GetPY();
             dir = prev->GetPDirection();
         } else {
             return ;

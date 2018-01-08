@@ -10,7 +10,7 @@ SRCS = cell.cpp grid.cpp segment.cpp snake.cpp pallet.cpp button.cpp buttonlist.
 
 CXXFLAGS= -O3 -std=c++11
 LDFLAGS= $(CXXFLAGS) $(LIBDIRS) -std=c++11
-LDLIBS = -lfreeglut -lopengl32 -lglu32 -lglew32 -lm
+LDLIBS = -lfreeglut -lopengl32 -lglu32 -lglew32 -lm -lpng
 OBJS=$(SRCS:%.cpp=%.o)
 default: $(PROGRAM_NAME)
 $(PROGRAM_NAME): $(OBJS)
