@@ -1,0 +1,20 @@
+# the name of the executable created
+PROGRAM_NAME = snake
+
+# Modify this variable as appropriate as you add .cpp files to
+# your project
+SRCS = cell.cpp grid.cpp segment.cpp snake.cpp pallet.cpp button.cpp buttonlist.cpp main.cpp
+
+# you shouldn't need to modify below here, but you can
+# if you know what you're doing
+
+CXXFLAGS= -O3 -std=c++11 -I/modules/cs324/glew-1.11.0/include
+LDFLAGS= $(CXXFLAGS) $(LIBDIRS) -std=c++11 -L/usr/X11R6/lib -L/modules/cs324/glew-1.11.0/lib -Wl,-rpath=/modules/cs324/glew-1.11.0/lib
+LDLIBS = -lglut -lGL -lGLU -lGLEW -lm -lpng -lX11
+OBJS=$(SRCS:%.cpp=%.o)
+default: $(PROGRAM_NAME)
+$(PROGRAM_NAME): $(OBJS)
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+clean:
+	-@rm $(OBJS) $(PROGRAM_NAME)
+.PHONY: default clean

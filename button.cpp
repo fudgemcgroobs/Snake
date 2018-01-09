@@ -2,12 +2,12 @@
 #include <GLUT/glut.h> 
 #else
 
-#include <GL/glew.h>
 #include <GL/glut.h> 
 #endif
 
 #include "button.h"
 #include <stdio.h>
+#include <cstring>
 
 float Button::str_width(const char* s) {
 	int len = strlen(s);

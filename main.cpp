@@ -19,8 +19,9 @@
 #include "buttonlist.h"
 #include "load_and_bind_texture.h"
 
-enum snake_sides { HEADBOT, HEADFRONT, HEADSIDE, HEADTOP,
-					INTER, SEGMENT, TAIL, TURN, SIDENUM};
+enum tex { HEADFRONT=0, HEADLEFT=1, HEADRIGHT=2, HEADBOT=3, HEADTOP=4,
+		   INTER=5, SEGMENT=6, TURN=7, TAIL=8, TEXNUM=9 };
+enum cube_sides { L=0, R=1, T=2, B=3, F=4, N=5 };
 
 float arena_size = 600.0f;		// The size, in world units, of the play area
 float screen_padding = 5.0f;	// In world coordinates/sizes
@@ -47,12 +48,13 @@ float c_n = -1.0f;
 // Coordinates of cube corners divided into sides
 static float cube[6][4][3] = {
 	{{c_l, c_t, c_n}, {c_l, c_t, c_f}, {c_l, c_b, c_f}, {c_l, c_b, c_n}}, // Left
-	{{c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_r, c_b, c_f}, {c_r, c_b, c_n}}, // Right
+	{{c_r, c_b, c_n}, {c_r, c_b, c_f}, {c_r, c_t, c_f}, {c_r, c_t, c_n}}, // Right
 	{{c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_l, c_t, c_f}, {c_l, c_t, c_n}}, // Top
-	{{c_r, c_b, c_n}, {c_r, c_b, c_f}, {c_l, c_b, c_f}, {c_l, c_b, c_n}}, // Bottom
-	{{c_l, c_t, c_f}, {c_r, c_t, c_f}, {c_r, c_b, c_f}, {c_l, c_b, c_f}}, // Far
-	{{c_l, c_t, c_b}, {c_r, c_t, c_b}, {c_r, c_b, c_b}, {c_l, c_b, c_b}}  // Near
+	{{c_l, c_b, c_n}, {c_l, c_b, c_f}, {c_r, c_b, c_f}, {c_r, c_b, c_n}}, // Bottom
+	{{c_l, c_b, c_f}, {c_l, c_t, c_f}, {c_r, c_t, c_f}, {c_r, c_b, c_f}}, // Far
+	{{c_l, c_t, c_n}, {c_r, c_t, c_n}, {c_r, c_b, c_n}, {c_l, c_b, c_n}}  // Near
 };
+static int tex_source_coords[4][2] {{0, 0}, {900, 0}, {900, 900}, {0, 900}};
 
 bool menu = true;		// If game is in menu
 bool running = false;	// If game is running at the moment
@@ -71,7 +73,7 @@ unsigned int max_difficulty = 9;
 unsigned int delay_step = 10;		// Tick difference between difficulties
 unsigned int max_delay = 140;		// The largest delay (in ticks) between snake steps
 unsigned int g_bitmap_text_handle = 0;
-unsigned int snake_tex[SIDENUM];
+unsigned int textures[TEXNUM];
 Grid* grid;				// Stores grid cell coordinates
 Snake* snake;			// Stores snake information and allows snake movement
 Pallet* pallet;			// Stores food pallet info and provides pallet functionality
@@ -90,14 +92,15 @@ unsigned int make_bitmap_text() {
 
 void load_and_bind_textures()
 {
-	snake_tex[HEADBOT] = load_and_bind_texture("./images/headbot.png");
-	snake_tex[HEADFRONT] = load_and_bind_texture("./images/headfront.png");
-	snake_tex[HEADSIDE] = load_and_bind_texture("./images/headside.png");
-	snake_tex[HEADTOP] = load_and_bind_texture("./images/headtop.png");
-	snake_tex[INTER] = load_and_bind_texture("./images/inter.png");
-	snake_tex[SEGMENT] = load_and_bind_texture("./images/segment.png");
-	snake_tex[TAIL] = load_and_bind_texture("./images/tail.png");
-	snake_tex[TURN] = load_and_bind_texture("./images/turn.png");
+	textures[HEADFRONT] = load_and_bind_texture("./images/headfront.png");
+	textures[HEADLEFT] = load_and_bind_texture("./images/headleft.png");
+	textures[HEADRIGHT] = load_and_bind_texture("./images/headright.png");
+	textures[HEADBOT] = load_and_bind_texture("./images/headbot.png");
+	textures[HEADTOP] = load_and_bind_texture("./images/headtop.png");
+	textures[INTER] = load_and_bind_texture("./images/inter.png");
+	textures[SEGMENT] = load_and_bind_texture("./images/segment.png");
+	textures[TURN] = load_and_bind_texture("./images/turn.png");
+	textures[TAIL] = load_and_bind_texture("./images/tail.png");
 }
 
 void draw_text(const char* s) {
@@ -156,7 +159,7 @@ void draw_square() {
 void draw_cube() {
 	glColor3f(1.0f, 1.0f, 1.0f);
 	for(size_t i = 0; i < 6; i++) {
-		glBegin(GL_LINE_LOOP);
+		glBegin(GL_QUADS);
 			for(size_t j = 0; j < 4; j++) {
 				glVertex3fv(cube[i][j]);
 			}
@@ -180,11 +183,67 @@ void draw_grid() {
 		}
 }
 
-void draw_3D_segment() {
+void draw_3D_segment(float x, float y, float z) {
 	glPushMatrix();
+		glTranslatef(x, y, z);
 		glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
 		draw_cube();
 	glPopMatrix();
+}
+void draw_head(unsigned int dir, float x, float y, float z) {
+	glTranslatef(x, y, z);
+	glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
+	cube_sides order[6] = {L, R, B, T, F, N};
+	switch(dir) {
+		case LEFT: order[0] = R; order[1] = L; break;
+		case UP: order[0] = B; order[2] = T;
+				 order[3] = L; order[4] = R; break;
+		case DOWN: order[0] = T; order[2] = B;
+				   order[3] = R; order[4] = L; break;
+	}
+	glBindTexture(GL_TEXTURE_2D, textures[INTER]);
+	glBegin(GL_QUADS);
+		for(size_t i = 0; i < 4; i++) {
+			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+			glVertex3fv(cube[L][i]);
+		}
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, textures[HEADFRONT]);
+	glBegin(GL_QUADS);
+		for(size_t i = 0; i < 4; i++) {
+			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+			glVertex3fv(cube[R][i]);
+		}
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, textures[HEADLEFT]);
+	glBegin(GL_QUADS);
+		for(size_t i = 0; i < 4; i++) {
+			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+			glVertex3fv(cube[T][i]);
+		}
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, textures[HEADRIGHT]);
+	glBegin(GL_QUADS);
+		for(size_t i = 0; i < 4; i++) {
+			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+			glVertex3fv(cube[B][i]);
+		}
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, textures[HEADBOT]);
+	glBegin(GL_QUADS);
+		for(size_t i = 0; i < 4; i++) {
+			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+			glVertex3fv(cube[F][i]);
+		}
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, textures[HEADTOP]);
+	glBegin(GL_QUADS);
+	fflush(stdout);
+		for(size_t i = 0; i < 4; i++) {
+			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+			glVertex3fv(cube[N][i]);
+		}
+	glEnd();
 }
 
 void draw_3D_snake() {
@@ -192,8 +251,18 @@ void draw_3D_snake() {
 	for(int i = 0; i < snake->GetLength(); i++) {
 		glPushMatrix();
 			Cell* new_cell = grid->GetCellAt(positions[i][0], positions[i][1]);
-			glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
-			draw_3D_segment();
+			if(i == 0) {
+				draw_head(positions[i][2], new_cell->GetX(), new_cell->GetY(), .0f);
+			// } else if(i == snake->GetLength() - 1) {
+			// 	draw_tail(positions[i][2]);
+			// } else {
+			// 	if(positions[i-1][2] != positions[i+1][2]) {
+			// 		draw_turn(positions[i-1][2], positions[i+1][2]);
+			// 	} else {
+			// 		draw_segment(positions[i][2]);
+			// 	}
+			// }
+			} else draw_3D_segment(new_cell->GetX(), new_cell->GetY(), .0f);
 		glPopMatrix();
 	}
 
@@ -382,26 +451,31 @@ void display_gui() {
 void display_game() {
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-	glColor3f(1.0f, 1.0f, 1.0f);
-	// Draw the separator between the HUD and play area
-	glBegin(GL_LINES);
-		glVertex2f(-h_limit, grid_top + screen_padding);
-		glVertex2f(h_limit, grid_top + screen_padding);
-	glEnd();
-
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	gluLookAt(x_tilt, y_tilt, 2, // eye position
 			  0, 0, 0, // reference point
 			  0, 1, 0  // up vector
 		);
+
+		glColor3f(1.0f, 1.0f, 1.0f);
+		// Draw the separator between the HUD and play area
+		glBegin(GL_LINES);
+			glVertex2f(-h_limit, grid_top + screen_padding);
+			glVertex2f(h_limit, grid_top + screen_padding);
+		glEnd();
+
 		// Draw the grid on which the snake and pallets will be displayed
 		if(display_grid) {
 			draw_grid();
+		} else {
+			// Draw edge
 		}
+		glEnable(GL_TEXTURE_2D);
 		// Draw the snake
 		draw_3D_snake();
 		// Draw the pallet
+		glDisable(GL_TEXTURE_2D);
 		glColor3f(.3f, .6f, .3f);
 		draw_pallet();
 		//draw HUD text
@@ -500,6 +574,7 @@ void mouse_action(int button, int state, int x, int y) {
 			delete [] bounds[i];
 		}
 		delete [] bounds;
+		glutPostRedisplay();
 	}
 }
 
@@ -543,7 +618,7 @@ void init_gl(int argc, char* argv[]) {
 	// Specify a projection with this view volume, centred on origin 
 	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
 	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -10000, 10000);
-
+	glEnable(GL_DEPTH_TEST);
 	glClearColor(.0f, 0.2f, .0f, 1.0f);
 	g_bitmap_text_handle = make_bitmap_text();
 }
