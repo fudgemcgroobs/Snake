@@ -191,59 +191,63 @@ void draw_3D_segment(float x, float y, float z) {
 	glPopMatrix();
 }
 void draw_head(unsigned int dir, float x, float y, float z) {
-	glTranslatef(x, y, z);
-	glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
-	cube_sides order[6] = {L, R, B, T, F, N};
-	switch(dir) {
-		case LEFT: order[0] = R; order[1] = L; break;
-		case UP: order[0] = B; order[2] = T;
-				 order[3] = L; order[4] = R; break;
-		case DOWN: order[0] = T; order[2] = B;
-				   order[3] = R; order[4] = L; break;
-	}
-	glBindTexture(GL_TEXTURE_2D, textures[INTER]);
-	glBegin(GL_QUADS);
-		for(size_t i = 0; i < 4; i++) {
-			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-			glVertex3fv(cube[L][i]);
+	glPushMatrix();
+		glTranslatef(x, y, z);
+		glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
+		cube_sides order[6] = {L, R, B, T, F, N};
+		switch(dir) {
+			case LEFT: order[0] = R; order[1] = L; break;
+			case UP: order[0] = B; order[2] = T;
+					order[3] = L; order[4] = R; break;
+			case DOWN: order[0] = T; order[2] = B;
+					order[3] = R; order[4] = L; break;
 		}
-	glEnd();
-	glBindTexture(GL_TEXTURE_2D, textures[HEADFRONT]);
-	glBegin(GL_QUADS);
-		for(size_t i = 0; i < 4; i++) {
-			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-			glVertex3fv(cube[R][i]);
-		}
-	glEnd();
-	glBindTexture(GL_TEXTURE_2D, textures[HEADLEFT]);
-	glBegin(GL_QUADS);
-		for(size_t i = 0; i < 4; i++) {
-			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-			glVertex3fv(cube[T][i]);
-		}
-	glEnd();
-	glBindTexture(GL_TEXTURE_2D, textures[HEADRIGHT]);
-	glBegin(GL_QUADS);
-		for(size_t i = 0; i < 4; i++) {
-			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-			glVertex3fv(cube[B][i]);
-		}
-	glEnd();
-	glBindTexture(GL_TEXTURE_2D, textures[HEADBOT]);
-	glBegin(GL_QUADS);
-		for(size_t i = 0; i < 4; i++) {
-			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-			glVertex3fv(cube[F][i]);
-		}
-	glEnd();
-	glBindTexture(GL_TEXTURE_2D, textures[HEADTOP]);
-	glBegin(GL_QUADS);
-	fflush(stdout);
-		for(size_t i = 0; i < 4; i++) {
-			glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-			glVertex3fv(cube[N][i]);
-		}
-	glEnd();
+		glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, textures[INTER]);
+			glBegin(GL_QUADS);
+				for(size_t i = 0; i < 4; i++) {
+					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+					glVertex3fv(cube[L][i]);
+				}
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, textures[HEADFRONT]);
+			glBegin(GL_QUADS);
+				for(size_t i = 0; i < 4; i++) {
+					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+					glVertex3fv(cube[R][i]);
+				}
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, textures[HEADLEFT]);
+			glBegin(GL_QUADS);
+				for(size_t i = 0; i < 4; i++) {
+					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+					glVertex3fv(cube[T][i]);
+				}
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, textures[HEADRIGHT]);
+			glBegin(GL_QUADS);
+				for(size_t i = 0; i < 4; i++) {
+					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+					glVertex3fv(cube[B][i]);
+				}
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, textures[HEADBOT]);
+			glBegin(GL_QUADS);
+				for(size_t i = 0; i < 4; i++) {
+					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+					glVertex3fv(cube[F][i]);
+				}
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, textures[HEADTOP]);
+			glBegin(GL_QUADS);
+			fflush(stdout);
+				for(size_t i = 0; i < 4; i++) {
+					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
+					glVertex3fv(cube[N][i]);
+				}
+			glEnd();
+		glDisable(GL_TEXTURE_2D);
+	glPopMatrix();
 }
 
 void draw_3D_snake() {
@@ -471,11 +475,9 @@ void display_game() {
 		} else {
 			// Draw edge
 		}
-		glEnable(GL_TEXTURE_2D);
 		// Draw the snake
 		draw_3D_snake();
 		// Draw the pallet
-		glDisable(GL_TEXTURE_2D);
 		glColor3f(.3f, .6f, .3f);
 		draw_pallet();
 		//draw HUD text
@@ -608,9 +610,18 @@ void init_structs() {
 	buttonList->AddButton("Quit", QUIT);
 }
 
-void init_gl(int argc, char* argv[]) {
-	load_and_bind_textures();
+void reshape(int w, int h) {
+	// Set viewport size (=scren size) and orthographic viewing
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION); 
+	glLoadIdentity();
+	// Specify a projection with this view volume, centred on origin 
+	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
+	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -10000, 10000);
+	glutPostRedisplay();
+}
 
+void init_gl(int argc, char* argv[]) {
     // Set viewport size (=scren size) and orthographic viewing
 	glViewport(0, 0, screen_width, screen_height);
 	glMatrixMode(GL_PROJECTION); 
@@ -618,9 +629,15 @@ void init_gl(int argc, char* argv[]) {
 	// Specify a projection with this view volume, centred on origin 
 	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
 	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -10000, 10000);
-	glEnable(GL_DEPTH_TEST);
-	glClearColor(.0f, 0.2f, .0f, 1.0f);
 	g_bitmap_text_handle = make_bitmap_text();
+	
+	load_and_bind_textures();
+	GLenum error = glGetError();
+	if (error!=GL_NO_ERROR) {
+		printf("GL error %s\n", gluErrorString(error));
+		fflush(stdout);
+	}
+	glEnable(GL_DEPTH_TEST);
 }
 
 int main(int argc, char* argv[]) {
@@ -645,7 +662,7 @@ int main(int argc, char* argv[]) {
 		glutKeyboardFunc(keyboard); 
 		glutSpecialFunc(special_keys);
 		glutMouseFunc(mouse_action);
-		// glutReshapeFunc(reshape); 
+		glutReshapeFunc(reshape); 
 		glutDisplayFunc(display);
 		glutIdleFunc(idle);
 
