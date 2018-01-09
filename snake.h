@@ -21,7 +21,7 @@ class Snake {
         bool Bite();
         unsigned int GetLength();
         unsigned int GetScore();
-        unsigned int EatPallet();
+        unsigned int EatPellet();
         unsigned int Move();
         unsigned int** GetSnakePosition();
 };

@@ -15,7 +15,7 @@
 #include <string>
 #include "grid.h"
 #include "snake.h"
-#include "pallet.h"
+#include "pellet.h"
 #include "buttonlist.h"
 #include "load_and_bind_texture.h"
 
@@ -54,7 +54,7 @@ static float cube[6][4][3] = {
 	{{c_l, c_b, c_f}, {c_l, c_t, c_f}, {c_r, c_t, c_f}, {c_r, c_b, c_f}}, // Far
 	{{c_l, c_t, c_n}, {c_r, c_t, c_n}, {c_r, c_b, c_n}, {c_l, c_b, c_n}}  // Near
 };
-static int tex_source_coords[4][2] {{0, 0}, {900, 0}, {900, 900}, {0, 900}};
+static int tex_source_coords[4][2] {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
 
 bool menu = true;		// If game is in menu
 bool running = false;	// If game is running at the moment
@@ -76,7 +76,7 @@ unsigned int g_bitmap_text_handle = 0;
 unsigned int textures[TEXNUM];
 Grid* grid;				// Stores grid cell coordinates
 Snake* snake;			// Stores snake information and allows snake movement
-Pallet* pallet;			// Stores food pallet info and provides pallet functionality
+Pellet* pellet;			// Stores food pellet info and provides pellet functionality
 ButtonList* buttonList;	// Stores GUI buttons and their information/effects
 
 unsigned int make_bitmap_text() {
@@ -207,35 +207,35 @@ void draw_head(unsigned int dir, float x, float y, float z) {
 			glBegin(GL_QUADS);
 				for(size_t i = 0; i < 4; i++) {
 					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[L][i]);
+					glVertex3fv(cube[order[0]][i]);
 				}
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, textures[HEADFRONT]);
 			glBegin(GL_QUADS);
 				for(size_t i = 0; i < 4; i++) {
 					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[R][i]);
+					glVertex3fv(cube[order[1]][i]);
 				}
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, textures[HEADLEFT]);
 			glBegin(GL_QUADS);
 				for(size_t i = 0; i < 4; i++) {
 					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[T][i]);
+					glVertex3fv(cube[order[2]][i]);
 				}
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, textures[HEADRIGHT]);
 			glBegin(GL_QUADS);
 				for(size_t i = 0; i < 4; i++) {
 					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[B][i]);
+					glVertex3fv(cube[order[3]][i]);
 				}
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, textures[HEADBOT]);
 			glBegin(GL_QUADS);
 				for(size_t i = 0; i < 4; i++) {
 					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[F][i]);
+					glVertex3fv(cube[order[4]][i]);
 				}
 			glEnd();
 			glBindTexture(GL_TEXTURE_2D, textures[HEADTOP]);
@@ -243,7 +243,7 @@ void draw_head(unsigned int dir, float x, float y, float z) {
 			fflush(stdout);
 				for(size_t i = 0; i < 4; i++) {
 					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[N][i]);
+					glVertex3fv(cube[order[5]][i]);
 				}
 			glEnd();
 		glDisable(GL_TEXTURE_2D);
@@ -276,8 +276,8 @@ void draw_3D_snake() {
 	delete [] positions;
 }
 
-void draw_pallet() {
-	Cell* new_cell = grid->GetCellAt(pallet->GetY(), pallet->GetX());
+void draw_pellet() {
+	Cell* new_cell = grid->GetCellAt(pellet->GetY(), pellet->GetX());
 	glPushMatrix();
 		glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
 		glScalef(grid->GetCellSize() - 0.5f, grid->GetCellSize() - 0.5f, 1.0f);
@@ -300,7 +300,7 @@ void draw_state() {
 	if(game_over) {
 		text = "Game Over!";
 	} else {
-		text = "Eat the Pallets!";
+		text = "Eat the pellets!";
 	}
 	draw_header(text);
 }
@@ -325,17 +325,17 @@ void check_head_collisions() {
 		game_over = true;
 		glutPostRedisplay();
 	}
-	// If head collide w pallet
+	// If head collide w pellet
 	unsigned int** positions = snake->GetSnakePosition();
-	if(positions[0][0] == pallet->GetY() &&
-			positions[0][1] == pallet->GetX()) {
-		int palletX;
-		int palletY;
+	if(positions[0][0] == pellet->GetY() &&
+			positions[0][1] == pellet->GetX()) {
+		int pelletX;
+		int pelletY;
 		do{
-			palletX = (int) ( rand() % ( grid_size - 1 ));
-			palletY = (int) ( rand() % ( grid_size - 1 ));
-		} while(!pallet->Reposition(palletX, palletY));
-		snake->EatPallet();
+			pelletX = (int) ( rand() % ( grid_size - 1 ));
+			pelletY = (int) ( rand() % ( grid_size - 1 ));
+		} while(!pellet->Reposition(pelletX, pelletY));
+		snake->EatPellet();
 		if(difficulty < max_difficulty && 
 				snake->GetScore() >= difficulty * difficulty_step) {
 			difficulty++;
@@ -412,20 +412,6 @@ void special_keys(int key, int x, int y) {
 // 	glutPostRedisplay();
 // }
 
-void display_main_menu() {
-	draw_header("Main Menu");
-	buttonList->DrawButtons();
-}
-
-void display_options() {
-	draw_header("Options");
-	buttonList->DrawButtons();
-}
-
-void display_instructions() {
-	draw_header("Instructions");
-}
-
 void display_gui() {
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
@@ -438,17 +424,18 @@ void display_gui() {
 
 	glMatrixMode(GL_MODELVIEW);
 	if(menu_screen == MAIN) {
-		display_main_menu();
+		draw_header("Main Menu");
 	} else if(menu_screen == OPTIONS) {
-		display_options();
+		draw_header("Options");
 	} else if(menu_screen == INSTRUCTIONS) {
-		display_instructions();
+		draw_header("Instructions");
 	} else if(menu_screen == GAME) {
 		menu = false;
 		running = true;
 	} else if(menu_screen == QUIT) {
 		quit_game();
 	}
+	buttonList->DrawButtons();
 	glutSwapBuffers();
 }
 
@@ -469,7 +456,7 @@ void display_game() {
 			glVertex2f(h_limit, grid_top + screen_padding);
 		glEnd();
 
-		// Draw the grid on which the snake and pallets will be displayed
+		// Draw the grid on which the snake and pellets will be displayed
 		if(display_grid) {
 			draw_grid();
 		} else {
@@ -477,9 +464,9 @@ void display_game() {
 		}
 		// Draw the snake
 		draw_3D_snake();
-		// Draw the pallet
+		// Draw the pellet
 		glColor3f(.3f, .6f, .3f);
-		draw_pallet();
+		draw_pellet();
 		//draw HUD text
 		glColor3f(1.0f, 1.0f, 1.0f);
 		draw_state();
@@ -493,6 +480,36 @@ void display() {
 	} else {
 		display_game();
 	}
+	// glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	// glMatrixMode(GL_MODELVIEW);
+	// glLoadIdentity();
+	// gluLookAt(x_tilt, y_tilt, 2, // eye position
+	// 		  0, 0, 0, // reference point
+	// 		  0, 1, 0  // up vector
+	// 	);
+	// glPopMatrix();
+	// //glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
+	// glEnable(GL_TEXTURE_2D);
+
+	// glBindTexture(GL_TEXTURE_2D, textures[HEADFRONT]);
+	// glBegin(GL_QUADS);
+	// 	glTexCoord2f(.0f, .0f);
+	// 	glVertex3f(-100.0f, 100.0f, .0f);
+	// 	// glVertex3fv(cube[4][0]);
+	// 	glTexCoord2f(1.0f, .0f);
+	// 	glVertex3f(100.0f, 100.0f, .0f);
+	// 	// glVertex3fv(cube[4][1]);
+	// 	glTexCoord2f(1.0f, 1.0f);
+	// 	glVertex3f(100.0f, -100.0f, .0f);
+	// 	// glVertex3fv(cube[4][2]);
+	// 	glTexCoord2f(.0f, 1.0f);
+	// 	glVertex3f(-100.0f, -100.0f, .0f);
+	// 	// glVertex3fv(cube[4][3]);
+	// glEnd();
+
+	// glDisable(GL_TEXTURE_2D);
+	// glPushMatrix();
+	// glutSwapBuffers();
 }
 
 void idle() {
@@ -596,9 +613,9 @@ void init_structs() {
 	snake = new Snake(3, 2, grid_size, loop);
 
 	srand(time(NULL));
-	int palletX = (int) ( rand() % ( grid_size - 1 ));
-	int palletY = (int) ( rand() % ( grid_size - 1 ));
-	pallet = new Pallet(palletX, palletY);
+	int pelletX = (int) ( rand() % ( grid_size - 1 ));
+	int pelletY = (int) ( rand() % ( grid_size - 1 ));
+	pellet = new Pellet(pelletX, pelletY);
 	ticks = 0;
 
 	menu_screen = 0;

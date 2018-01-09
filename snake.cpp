@@ -117,7 +117,7 @@ unsigned int Snake::GetScore() {
     return score;
 }
 
-unsigned int Snake::EatPallet() {
+unsigned int Snake::EatPellet() {
     score++;
     AddSegment();
     return score;

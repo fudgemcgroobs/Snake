@@ -1,18 +1,18 @@
-#include "pallet.h"
+#include "pellet.h"
 #include <time.h>
 #include <stdlib.h>
 
-Pallet::Pallet() {
+Pellet::Pellet() {
     x = 0;
     y = 0;
 }
 
-Pallet::Pallet(int n_x, int n_y) {
+Pellet::Pellet(int n_x, int n_y) {
     x = n_x;
     y = n_y;
 }
 
-bool Pallet::Reposition(int n_x, int n_y) {
+bool Pellet::Reposition(int n_x, int n_y) {
     if(x != n_x && y != n_y) {
         x = n_x;
         y = n_y;
@@ -23,10 +23,10 @@ bool Pallet::Reposition(int n_x, int n_y) {
     return false;
 }
 
-int Pallet::GetX() {
+int Pellet::GetX() {
     return x;
 }
 
-int Pallet::GetY() {
+int Pellet::GetY() {
     return y;
 }
