@@ -19,8 +19,8 @@
 #include "buttonlist.h"
 #include "load_and_bind_texture.h"
 
-enum tex { HEADFRONT=0, HEADLEFT=1, HEADRIGHT=2, HEADBOT=3, HEADTOP=4,
-		   INTER=5, SEGMENT=6, TURN=7, TAIL=8, TEXNUM=9 };
+enum tex { INTER=0, HEADFRONT=1, HEADRIGHT=2, HEADLEFT=3, HEADTOP=4,
+		   SEGMENT=5, TURN=6, TAIL=7, END=8, TEXNUM=9 };
 enum cube_sides { L=0, R=1, T=2, B=3, F=4, N=5 };
 
 float arena_size = 600.0f;		// The size, in world units, of the play area
@@ -43,14 +43,14 @@ float c_l = .0f;
 float c_t = .0f;
 float c_b = -1.0f;
 float c_f = .0f;
-float c_n = -1.0f;
+float c_n = 1.0f;
 
 // Coordinates of cube corners divided into sides
 static float cube[6][4][3] = {
-	{{c_l, c_t, c_n}, {c_l, c_t, c_f}, {c_l, c_b, c_f}, {c_l, c_b, c_n}}, // Left
-	{{c_r, c_b, c_n}, {c_r, c_b, c_f}, {c_r, c_t, c_f}, {c_r, c_t, c_n}}, // Right
-	{{c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_l, c_t, c_f}, {c_l, c_t, c_n}}, // Top
-	{{c_l, c_b, c_n}, {c_l, c_b, c_f}, {c_r, c_b, c_f}, {c_r, c_b, c_n}}, // Bottom
+	{{c_l, c_t, c_n}, {c_l, c_b, c_n}, {c_l, c_b, c_f}, {c_l, c_t, c_f}}, // Left
+	{{c_r, c_b, c_n}, {c_r, c_t, c_n}, {c_r, c_t, c_f}, {c_r, c_b, c_f}}, // Right
+	{{c_r, c_t, c_n}, {c_l, c_t, c_n}, {c_l, c_t, c_f}, {c_r, c_t, c_f}}, // Top
+	{{c_l, c_b, c_n}, {c_r, c_b, c_n}, {c_r, c_b, c_f}, {c_l, c_b, c_f}}, // Bottom
 	{{c_l, c_b, c_f}, {c_l, c_t, c_f}, {c_r, c_t, c_f}, {c_r, c_b, c_f}}, // Far
 	{{c_l, c_t, c_n}, {c_r, c_t, c_n}, {c_r, c_b, c_n}, {c_l, c_b, c_n}}  // Near
 };
@@ -92,15 +92,15 @@ unsigned int make_bitmap_text() {
 
 void load_and_bind_textures()
 {
-	textures[HEADFRONT] = load_and_bind_texture("./images/headfront.png");
-	textures[HEADLEFT] = load_and_bind_texture("./images/headleft.png");
-	textures[HEADRIGHT] = load_and_bind_texture("./images/headright.png");
-	textures[HEADBOT] = load_and_bind_texture("./images/headbot.png");
-	textures[HEADTOP] = load_and_bind_texture("./images/headtop.png");
 	textures[INTER] = load_and_bind_texture("./images/inter.png");
+	textures[HEADFRONT] = load_and_bind_texture("./images/headfront.png");
+	textures[HEADRIGHT] = load_and_bind_texture("./images/headright.png");
+	textures[HEADLEFT] = load_and_bind_texture("./images/headleft.png");
+	textures[HEADTOP] = load_and_bind_texture("./images/headtop.png");
 	textures[SEGMENT] = load_and_bind_texture("./images/segment.png");
 	textures[TURN] = load_and_bind_texture("./images/turn.png");
 	textures[TAIL] = load_and_bind_texture("./images/tail.png");
+	textures[END] = load_and_bind_texture("./images/end.png");
 }
 
 void draw_text(const char* s) {
@@ -194,57 +194,71 @@ void draw_head(unsigned int dir, float x, float y, float z) {
 	glPushMatrix();
 		glTranslatef(x, y, z);
 		glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
-		cube_sides order[6] = {L, R, B, T, F, N};
+		cube_sides order[5] = {L, R, B, T, N};
 		switch(dir) {
-			case LEFT: order[0] = R; order[1] = L; break;
-			case UP: order[0] = B; order[2] = T;
-					order[3] = L; order[4] = R; break;
-			case DOWN: order[0] = T; order[2] = B;
-					order[3] = R; order[4] = L; break;
+			case LEFT: order[0] = R; order[1] = L;
+					   order[2] = T; order[3] = B; break;
+			case UP: order[0] = B; order[1] = T;
+					order[2] = R; order[3] = L; break;
+			case DOWN: order[0] = T; order[1] = B;
+					order[2] = L; order[3] = R; break;
 		}
 		glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, textures[INTER]);
-			glBegin(GL_QUADS);
-				for(size_t i = 0; i < 4; i++) {
-					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[order[0]][i]);
-				}
-			glEnd();
-			glBindTexture(GL_TEXTURE_2D, textures[HEADFRONT]);
-			glBegin(GL_QUADS);
-				for(size_t i = 0; i < 4; i++) {
-					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[order[1]][i]);
-				}
-			glEnd();
-			glBindTexture(GL_TEXTURE_2D, textures[HEADLEFT]);
-			glBegin(GL_QUADS);
-				for(size_t i = 0; i < 4; i++) {
-					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[order[2]][i]);
-				}
-			glEnd();
-			glBindTexture(GL_TEXTURE_2D, textures[HEADRIGHT]);
-			glBegin(GL_QUADS);
-				for(size_t i = 0; i < 4; i++) {
-					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[order[3]][i]);
-				}
-			glEnd();
-			glBindTexture(GL_TEXTURE_2D, textures[HEADBOT]);
-			glBegin(GL_QUADS);
-				for(size_t i = 0; i < 4; i++) {
-					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[order[4]][i]);
-				}
-			glEnd();
+		
+			for(size_t i = 0; i < 4; i++) {
+				glBindTexture(GL_TEXTURE_2D, textures[i]);
+				glBegin(GL_QUADS);
+					for(size_t j = 0; j < 4; j++) {
+						glTexCoord2f(tex_source_coords[j][0], tex_source_coords[j][1]);
+						glVertex3fv(cube[order[i]][j]);
+					}
+				glEnd();
+			}
+
 			glBindTexture(GL_TEXTURE_2D, textures[HEADTOP]);
 			glBegin(GL_QUADS);
-			fflush(stdout);
-				for(size_t i = 0; i < 4; i++) {
-					glTexCoord2f(tex_source_coords[i][0], tex_source_coords[i][1]);
-					glVertex3fv(cube[order[5]][i]);
+				unsigned int add = 1;
+				switch(dir) {
+					case LEFT: add = 3; break;
+					case UP: add = 0; break;
+					case DOWN: add = 2; break;						
 				}
+				for(size_t i = 0; i < 4; i++) {
+					glTexCoord2f(tex_source_coords[i][0],
+								 tex_source_coords[i][1]);
+					glVertex3fv(cube[order[4]][(i+add)%4]);
+				}
+			glEnd();
+		glDisable(GL_TEXTURE_2D);
+	glPopMatrix();
+}
+
+void draw_tail(unsigned int dir, float x, float y, float z) {
+	glPushMatrix();
+		glTranslatef(x, y, z);
+		glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
+		glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, textures[TAIL]);
+			cube_sides order[5] = {R, L, B, T, N};
+			switch(dir) {
+				case LEFT: order[0] = L; order[1] = R;
+						   order[2] = T; order[3] = B; break;
+				case UP: order[0] = T; order[1] = B;
+						 order[2] = R; order[3] = L; break;
+				case DOWN: order[0] = B; order[1] = T;
+						   order[2] = L; order[3] = R; break;
+			}
+			glBindTexture(GL_TEXTURE_2D, textures[INTER]);
+			glBegin(GL_QUADS);
+			for(size_t i = 0; i < 4; i++) {
+				glTexCoord2f(tex_source_coords[i][0],
+							 tex_source_coords[i][1]);
+				glVertex3fv(cube[order[0]][i]);
+			}
+			glEnd();
+			glBindTexture(GL_TEXTURE_2D, textures[END]);
+			glBegin(GL_QUADS);
+
 			glEnd();
 		glDisable(GL_TEXTURE_2D);
 	glPopMatrix();
@@ -257,8 +271,8 @@ void draw_3D_snake() {
 			Cell* new_cell = grid->GetCellAt(positions[i][0], positions[i][1]);
 			if(i == 0) {
 				draw_head(positions[i][2], new_cell->GetX(), new_cell->GetY(), .0f);
-			// } else if(i == snake->GetLength() - 1) {
-			// 	draw_tail(positions[i][2]);
+			} else if(i == snake->GetLength() - 1) {
+				draw_tail(positions[i][2], new_cell->GetX(), new_cell->GetY(), .0f);
 			// } else {
 			// 	if(positions[i-1][2] != positions[i+1][2]) {
 			// 		draw_turn(positions[i-1][2], positions[i+1][2]);
@@ -401,17 +415,6 @@ void special_keys(int key, int x, int y) {
 	}
 }
 
-// void reshape(int w, int h)
-// {
-// 	glViewport(0, 0, w, h);
-// 	glMatrixMode(GL_PROJECTION);
-// 	glLoadIdentity();
-    
-//     //gluPerspective(40.0, 1.0f, 1.0, 5.0);
-
-// 	glutPostRedisplay();
-// }
-
 void display_gui() {
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
@@ -480,36 +483,6 @@ void display() {
 	} else {
 		display_game();
 	}
-	// glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-	// glMatrixMode(GL_MODELVIEW);
-	// glLoadIdentity();
-	// gluLookAt(x_tilt, y_tilt, 2, // eye position
-	// 		  0, 0, 0, // reference point
-	// 		  0, 1, 0  // up vector
-	// 	);
-	// glPopMatrix();
-	// //glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
-	// glEnable(GL_TEXTURE_2D);
-
-	// glBindTexture(GL_TEXTURE_2D, textures[HEADFRONT]);
-	// glBegin(GL_QUADS);
-	// 	glTexCoord2f(.0f, .0f);
-	// 	glVertex3f(-100.0f, 100.0f, .0f);
-	// 	// glVertex3fv(cube[4][0]);
-	// 	glTexCoord2f(1.0f, .0f);
-	// 	glVertex3f(100.0f, 100.0f, .0f);
-	// 	// glVertex3fv(cube[4][1]);
-	// 	glTexCoord2f(1.0f, 1.0f);
-	// 	glVertex3f(100.0f, -100.0f, .0f);
-	// 	// glVertex3fv(cube[4][2]);
-	// 	glTexCoord2f(.0f, 1.0f);
-	// 	glVertex3f(-100.0f, -100.0f, .0f);
-	// 	// glVertex3fv(cube[4][3]);
-	// glEnd();
-
-	// glDisable(GL_TEXTURE_2D);
-	// glPushMatrix();
-	// glutSwapBuffers();
 }
 
 void idle() {
