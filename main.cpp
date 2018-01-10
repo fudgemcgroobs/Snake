@@ -20,8 +20,10 @@
 #include "load_and_bind_texture.h"
 
 enum tex { INTER=0, HEADFRONT=1, HEADRIGHT=2, HEADLEFT=3, HEADTOP=4,
-		   SEGMENT=5, TURN=6, TAIL=7, END=8, TEXNUM=9 };
-enum cube_sides { L=0, R=1, T=2, B=3, F=4, N=5 };
+		   SEGMENT=5, SEGMENTT=6, TURNL=7, TURNR=8,
+		   TAILR=9, TAILL=10, TAILT=11, END=12,
+		   GRASS=13, TEXNUM=14 };
+enum cube_side { L=0, R=1, T=2, B=3, F=4, N=5 };
 
 float arena_size = 600.0f;		// The size, in world units, of the play area
 float screen_padding = 5.0f;	// In world coordinates/sizes
@@ -62,6 +64,7 @@ bool game_over = false;	// If the game has been lost
 bool moved = false;		// If the snake has moved since the last direction change
 bool loop = true;		// If the snake is allowed to loop at edges of screen
 bool display_grid = false;
+bool invisible = false;
 int ticks;			// Ticks that have been counted. Resets depending on difficulty
 int menu_screen;	// The current menu screen (check Destination in button.h for options)
 int y_tilt = 0;
@@ -98,9 +101,15 @@ void load_and_bind_textures()
 	textures[HEADLEFT] = load_and_bind_texture("./images/headleft.png");
 	textures[HEADTOP] = load_and_bind_texture("./images/headtop.png");
 	textures[SEGMENT] = load_and_bind_texture("./images/segment.png");
-	textures[TURN] = load_and_bind_texture("./images/turn.png");
-	textures[TAIL] = load_and_bind_texture("./images/tail.png");
+	textures[SEGMENTT] = load_and_bind_texture("./images/segmentt.png");
+	textures[TURNL] = load_and_bind_texture("./images/turnl.png");
+	textures[TURNR] = load_and_bind_texture("./images/turnr.png");
+	textures[TAILR] = load_and_bind_texture("./images/tailr.png");
+	textures[TAILL] = load_and_bind_texture("./images/taill.png");
+	textures[TAILT] = load_and_bind_texture("./images/tailt.png");
 	textures[END] = load_and_bind_texture("./images/end.png");
+
+	textures[GRASS] = load_and_bind_texture("./images/grass.png");
 }
 
 void draw_text(const char* s) {
@@ -167,6 +176,48 @@ void draw_cube() {
 	}
 }
 
+void draw_textured_side(tex source, cube_side side) {
+	glBindTexture(GL_TEXTURE_2D, textures[source]);
+	glBegin(GL_QUADS);
+		for(size_t i = 0; i < 4; i++) {
+			glTexCoord2f(tex_source_coords[i][0],
+						 tex_source_coords[i][1]);
+			glVertex3fv(cube[side][i]);
+		}
+	glEnd();
+}
+
+void draw_textured_top(tex source, cube_side side, unsigned int dir) {
+	glBindTexture(GL_TEXTURE_2D, textures[source]);
+	glBegin(GL_QUADS);
+		unsigned int add = 1;
+		switch(dir) {
+			case LEFT: add = 3; break;
+			case UP: add = 0; break;
+			case DOWN: add = 2; break;						
+		}
+		for(size_t i = 0; i < 4; i++) {
+			glTexCoord2f(tex_source_coords[i][0],
+						 tex_source_coords[i][1]);
+			glVertex3fv(cube[side][(i+add)%4]);
+		}
+	glEnd();
+}
+
+void draw_grass() {
+	glBindTexture(GL_TEXTURE_2D, textures[GRASS]);
+	glBegin(GL_QUADS);
+		glTexCoord2f(.0f, .0f);
+		glVertex3f(-h_limit, -h_limit, .2f);
+		glTexCoord2f(1.0f, .0f);
+		glVertex3f(h_limit, -h_limit, .2f);
+		glTexCoord2f(1.0f, 1.0f);
+		glVertex3f(h_limit, h_limit, .2f);
+		glTexCoord2f(.0f, 1.0f);
+		glVertex3f(-h_limit, h_limit, .2f);
+	glEnd();
+}
+
 /*
 * Method that draws a grid using the coordinates stored in the Grid structure
 */
@@ -183,85 +234,86 @@ void draw_grid() {
 		}
 }
 
-void draw_3D_segment(float x, float y, float z) {
-	glPushMatrix();
-		glTranslatef(x, y, z);
-		glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
-		draw_cube();
-	glPopMatrix();
-}
-void draw_head(unsigned int dir, float x, float y, float z) {
-	glPushMatrix();
-		glTranslatef(x, y, z);
-		glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
-		cube_sides order[5] = {L, R, B, T, N};
-		switch(dir) {
-			case LEFT: order[0] = R; order[1] = L;
-					   order[2] = T; order[3] = B; break;
-			case UP: order[0] = B; order[1] = T;
-					order[2] = R; order[3] = L; break;
-			case DOWN: order[0] = T; order[1] = B;
-					order[2] = L; order[3] = R; break;
+void draw_head(unsigned int dir) {
+	cube_side order[5] = {L, R, B, T, N};
+	switch(dir) {
+		case LEFT: order[0] = R; order[1] = L;
+				   order[2] = T; order[3] = B; break;
+		case UP: order[0] = B; order[1] = T;
+				 order[2] = R; order[3] = L; break;
+		case DOWN: order[0] = T; order[1] = B;
+				   order[2] = L; order[3] = R; break;
+	}
+	glEnable(GL_TEXTURE_2D);
+		for(size_t i = 0; i < 4; i++) {
+			draw_textured_side((tex) i, order[i]);
 		}
-		glEnable(GL_TEXTURE_2D);
-		
-			for(size_t i = 0; i < 4; i++) {
-				glBindTexture(GL_TEXTURE_2D, textures[i]);
-				glBegin(GL_QUADS);
-					for(size_t j = 0; j < 4; j++) {
-						glTexCoord2f(tex_source_coords[j][0], tex_source_coords[j][1]);
-						glVertex3fv(cube[order[i]][j]);
-					}
-				glEnd();
-			}
-
-			glBindTexture(GL_TEXTURE_2D, textures[HEADTOP]);
-			glBegin(GL_QUADS);
-				unsigned int add = 1;
-				switch(dir) {
-					case LEFT: add = 3; break;
-					case UP: add = 0; break;
-					case DOWN: add = 2; break;						
-				}
-				for(size_t i = 0; i < 4; i++) {
-					glTexCoord2f(tex_source_coords[i][0],
-								 tex_source_coords[i][1]);
-					glVertex3fv(cube[order[4]][(i+add)%4]);
-				}
-			glEnd();
-		glDisable(GL_TEXTURE_2D);
-	glPopMatrix();
+		draw_textured_top(HEADTOP, order[4], dir);
+	glDisable(GL_TEXTURE_2D);
 }
 
-void draw_tail(unsigned int dir, float x, float y, float z) {
-	glPushMatrix();
-		glTranslatef(x, y, z);
-		glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
-		glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, textures[TAIL]);
-			cube_sides order[5] = {R, L, B, T, N};
-			switch(dir) {
-				case LEFT: order[0] = L; order[1] = R;
-						   order[2] = T; order[3] = B; break;
-				case UP: order[0] = T; order[1] = B;
-						 order[2] = R; order[3] = L; break;
-				case DOWN: order[0] = B; order[1] = T;
-						   order[2] = L; order[3] = R; break;
-			}
-			glBindTexture(GL_TEXTURE_2D, textures[INTER]);
-			glBegin(GL_QUADS);
-			for(size_t i = 0; i < 4; i++) {
-				glTexCoord2f(tex_source_coords[i][0],
-							 tex_source_coords[i][1]);
-				glVertex3fv(cube[order[0]][i]);
-			}
-			glEnd();
-			glBindTexture(GL_TEXTURE_2D, textures[END]);
-			glBegin(GL_QUADS);
+void draw_tail(unsigned int dir) {
+	glEnable(GL_TEXTURE_2D);
+		cube_side order[5] = {R, L, B, T, N};
+		switch(dir) {
+			case LEFT: order[0] = L; order[1] = R;
+					   order[2] = T; order[3] = B; break;
+			case UP: order[0] = T; order[1] = B;
+					 order[2] = R; order[3] = L; break;
+			case DOWN: order[0] = B; order[1] = T;
+					   order[2] = L; order[3] = R; break;
+		}
+		draw_textured_side(INTER, order[0]);
+		draw_textured_side(END, order[1]);
+		draw_textured_side(TAILR, order[2]);
+		draw_textured_side(TAILL, order[3]);
+		draw_textured_top(TAILT, order[4], dir);
+	glDisable(GL_TEXTURE_2D);
+}
 
-			glEnd();
-		glDisable(GL_TEXTURE_2D);
-	glPopMatrix();
+void draw_turn(unsigned int ahead, unsigned int behind) {
+	glEnable(GL_TEXTURE_2D);
+	cube_side order[5] = {L, R, B, T, N};
+	switch(ahead) {
+		case LEFT: order[0] = R; order[1] = L; break;
+		case UP: order[0] = B; order[1] = T; break;
+		case DOWN: order[0] = T; order[1] = B; break;
+	}
+	switch(behind) {
+		case LEFT: order[2] = L; order[3] = R; break;
+		case RIGHT: order[2] = R; order[3] = L; break;
+		case UP: order[2] = T; order[3] = B; break;
+	}
+	draw_textured_side(SEGMENT, order[0]);
+	draw_textured_side(INTER, order[1]);
+	draw_textured_side(SEGMENT, order[2]);
+	draw_textured_side(INTER, order[3]);
+	if((ahead > behind || (ahead == UP && behind == LEFT)) &&
+		!(ahead == LEFT && behind == UP)) {
+		draw_textured_top(TURNL, order[4], ahead);
+	} else {
+		draw_textured_top(TURNR, order[4], ahead);
+	}
+	glDisable(GL_TEXTURE_2D);
+}
+
+void draw_segment(unsigned int dir) {
+	glEnable(GL_TEXTURE_2D);
+	cube_side order[5] = {L, R, B, T, N};
+	switch(dir) {
+		case LEFT: order[0] = R; order[1] = L;
+				   order[2] = T; order[3] = B; break;
+		case UP: order[0] = B; order[1] = T;
+				 order[2] = R; order[3] = L; break;
+		case DOWN: order[0] = T; order[1] = B;
+				   order[2] = L; order[3] = R; break;
+	}
+	draw_textured_side(INTER, order[0]);
+	draw_textured_side(INTER, order[1]);
+	draw_textured_side(SEGMENT, order[2]);
+	draw_textured_side(SEGMENT, order[3]);		
+	draw_textured_top(SEGMENTT, order[4], dir);
+	glDisable(GL_TEXTURE_2D);
 }
 
 void draw_3D_snake() {
@@ -269,18 +321,19 @@ void draw_3D_snake() {
 	for(int i = 0; i < snake->GetLength(); i++) {
 		glPushMatrix();
 			Cell* new_cell = grid->GetCellAt(positions[i][0], positions[i][1]);
+			glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
+			glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
 			if(i == 0) {
-				draw_head(positions[i][2], new_cell->GetX(), new_cell->GetY(), .0f);
+				draw_head(positions[i][2]);
 			} else if(i == snake->GetLength() - 1) {
-				draw_tail(positions[i][2], new_cell->GetX(), new_cell->GetY(), .0f);
-			// } else {
-			// 	if(positions[i-1][2] != positions[i+1][2]) {
-			// 		draw_turn(positions[i-1][2], positions[i+1][2]);
-			// 	} else {
-			// 		draw_segment(positions[i][2]);
-			// 	}
-			// }
-			} else draw_3D_segment(new_cell->GetX(), new_cell->GetY(), .0f);
+				draw_tail(positions[i][2]);
+			} else if(!invisible) {
+				if(positions[i][2] != positions[i][3]) {
+					draw_turn(positions[i][2], positions[i][3]);
+				} else {
+					draw_segment(positions[i][2]);
+				}
+			}
 		glPopMatrix();
 	}
 
@@ -301,8 +354,8 @@ void draw_pellet() {
 
 void draw_header(const char* text) {
 	glPushMatrix();
-		float h_center_offset = -str_width(text)/(2/text_size);
-		float v_center_offset = v_limit - screen_padding - (hud_height/2);
+		float h_center_offset = -str_width(text) / ( 2 / text_size );
+		float v_center_offset = v_limit - screen_padding - ( hud_height / 2 );
 		glTranslatef(.0f + h_center_offset, .0f + v_center_offset, .0f);
 		glScalef(text_size, text_size, 1.0f);
 		draw_text(text);
@@ -325,7 +378,7 @@ void draw_score() {
 
 	glPushMatrix();
 		float h_center_offset = -h_limit + screen_padding;
-		float v_center_offset = v_limit - screen_padding - (hud_height/2);
+		float v_center_offset = v_limit - screen_padding - ( hud_height / 2 );
 		glTranslatef(.0f + h_center_offset, .0f + v_center_offset, .0f);
 		glScalef(text_size, text_size, 1.0f);
 		draw_text(text);
@@ -459,6 +512,7 @@ void display_game() {
 			glVertex2f(h_limit, grid_top + screen_padding);
 		glEnd();
 
+		draw_grass();
 		// Draw the grid on which the snake and pellets will be displayed
 		if(display_grid) {
 			draw_grid();

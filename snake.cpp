@@ -161,6 +161,7 @@ unsigned int** Snake::GetSnakePosition() {
         positions[i][0] = s->GetY();
         positions[i][1] = s->GetX();
         positions[i][2] = s->GetDirection();
+        positions[i][3] = s->GetPDirection();
         s = s->GetNext();
     }
     return positions;
