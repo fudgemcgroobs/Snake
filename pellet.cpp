@@ -12,6 +12,8 @@ Pellet::Pellet(int n_x, int n_y) {
     y = n_y;
 }
 
+void Pellet::Delete() {}
+
 bool Pellet::Reposition(int n_x, int n_y) {
     if(x != n_x && y != n_y) {
         x = n_x;

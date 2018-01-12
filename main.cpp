@@ -339,7 +339,7 @@ void draw_grid() {
 			for(int j = 0; j < grid_size; j++) {
 				glPushMatrix();
 					Cell* new_cell = grid->GetCellAt(i, j);
-					glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
+					glTranslatef(new_cell->GetX(), new_cell->GetY(), 1.0f);
 					glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
 					draw_square();
 				glPopMatrix();
@@ -496,25 +496,26 @@ void draw_outline() {
 }
 
 void display_gui() {
+	glColor3f(1.0f, .0f, .0f);
 	glPushMatrix();
 		glTranslatef(.0f, .0f, 1.0f);
-		glColor3f(1.0f, 1.0f, 1.0f);
 
 		glMatrixMode(GL_MODELVIEW);
 		if(menu_screen == MAIN) {
 			draw_header("Main Menu");
 		} else if(menu_screen == OPTIONS) {
 			draw_header("Options");
-		} else if(menu_screen == INSTRUCTIONS) {
-			draw_header("Instructions");
 		} else if(menu_screen == GAME) {
 			draw_state();
 			draw_score();
 		} else if(menu_screen == QUIT) {
 			quit_game();
+		} else if(menu_screen == PAUSE) {
+			draw_header("Pause");
 		}
 		buttonList->DrawButtons();
 	glPopMatrix();
+	glColor3f(1.0f, 1.0f, 1.0f);
 }
 
 void display_game() {
@@ -544,7 +545,7 @@ void display_game() {
 void display() {
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	display_game();
-	
+
 	setOrthographicProjection();
 		glPushMatrix();
 		glLoadIdentity();
@@ -555,11 +556,99 @@ void display() {
 	glutSwapBuffers();
 }
 
+void init_grid() {
+	if(grid) {
+		grid->Delete();
+		delete grid;
+	}
+	grid = new Grid(arena_size, grid_size, screen_pad,
+					grid_left,
+					grid_top);
+	grid_right = grid_left + (grid_size * grid->GetCellSize());
+	grid_bot = grid_top - (grid_size * grid->GetCellSize());
+}
+
+void init_snake() {
+	if(snake) {
+		snake->Delete();
+		delete snake;
+	}
+	snake = new Snake(3, 2, grid_size, loop);
+}
+
+void init_pellet() {
+	if(pellet) {
+		pellet->Delete();
+		delete pellet;
+	}
+	int pelletX = (int) ( rand() % ( grid_size - 1 ));
+	int pelletY = (int) ( rand() % ( grid_size - 1 ));
+	pellet = new Pellet(pelletX, pelletY);
+}
+
+void init_structs() {
+	init_grid();
+	init_snake();
+	init_pellet();
+	ticks = 0;
+}
+
+void init_state() {
+	menu = true;		// If game is in menu
+	running = false;	// If game is running at the moment
+	game_over = false;	// If the game has been lost
+	moved = false;		// If the snake has moved since the last direction change
+	loop = true;		// If the snake is allowed to loop at edges of screen
+	display_grid = false;
+	invisible = false;
+	fp = false;
+	difficulty = 0;
+	screen_height = arena_size + screen_pad;
+	screen_width = arena_size + screen_pad;
+	h_limit = screen_width / 2;
+	v_limit = screen_height / 2;
+	grid_left = -h_limit + screen_pad;
+	grid_top = v_limit - screen_pad;
+	view_rad = (grid_right - grid_left);
+	cam_angle = .0f;
+	
+	init_structs();
+	
+	plank_size = (grid_right - grid_left) / plank_num;
+
+	srand(time(NULL));
+	
+	menu_screen = 0;
+	int v_center_offset = v_limit - hud_height - screen_pad;
+	buttonList = new ButtonList(0 + v_center_offset, screen_width, 40);
+	buttonList->AddButton("Play", GAME);
+	buttonList->AddButton("Options", OPTIONS);
+	buttonList->AddButton("Quit", QUIT);
+}
+
+void init_gl(int argc, char* argv[]) {
+	glViewport(0, 0, screen_width, screen_height);
+	glMatrixMode(GL_PROJECTION); 
+	glLoadIdentity();
+	gluPerspective(90.0f, screen_width / screen_height, 1.0f, 800.0f);
+	g_bitmap_text_handle = make_bitmap_text();
+	
+	load_and_bind_textures();
+	GLenum error = glGetError();
+	if (error!=GL_NO_ERROR) {
+		printf("GL error %s\n", gluErrorString(error));
+		fflush(stdout);
+	}
+}
+
 void check_head_collisions() {
 	// If head collide with body
 	if(snake->Bite() && running) {
 		running = false;
 		game_over = true;
+		buttonList->Refresh();
+		buttonList->AddButton("Main menu", QMAIN);
+		buttonList->AddButton("Quit", QUIT);
 		glutPostRedisplay();
 	}
 	// If head collide w pellet
@@ -604,11 +693,17 @@ void mouse_action(int button, int state, int x, int y) {
 			   		x > bounds[i][2] && x < bounds[i][3]) {
 				menu_screen = bounds[i][4];
 				switch(menu_screen) {
+					case QMAIN:
+						game_over = false;
+						menu = true;
+						menu_screen = MAIN;
+						y_up = 0;
+						z_up = 1;
+						init_structs();
 					case MAIN:
 						buttonList->Refresh();
 						buttonList->AddButton("Play", GAME);
 						buttonList->AddButton("Options", OPTIONS);
-						buttonList->AddButton("Instructions", INSTRUCTIONS);
 						buttonList->AddButton("Quit", QUIT);
 						break;
 					case GAME:
@@ -624,17 +719,27 @@ void mouse_action(int button, int state, int x, int y) {
 							move_fp();
 						}
 						break;
-					case GRID:
-						display_grid = !display_grid;
-						menu_screen = OPTIONS;
-						goto options;
-						break;
 					case LOOP:
 						loop = !loop;
 						snake->SetLoop(loop);
 						menu_screen = OPTIONS;
 						goto options;
-						break;
+					case GRID:
+						display_grid = !display_grid;
+						menu_screen = OPTIONS;
+						goto options;
+					case INV:
+						invisible = !invisible;
+						menu_screen = OPTIONS;
+						goto options;
+					case GSIZE:
+						grid_size += 5;
+						if(grid_size > 25) {
+							grid_size = 15;
+						}
+						init_structs();
+						menu_screen = OPTIONS;
+						goto options;
 					case OPTIONS:
 						options:
 						buttonList->Refresh();
@@ -649,8 +754,18 @@ void mouse_action(int button, int state, int x, int y) {
 						} else {
 							buttonList->AddButton("Grid: OFF", GRID);							
 						}
-						break;
-					case INSTRUCTIONS:
+						if(invisible) {
+							buttonList->AddButton("Invisible body: ON", INV);
+						} else {
+							buttonList->AddButton("Invisible body: OFF", INV);
+						}
+						if(grid_size == 15) {
+							buttonList->AddButton("Grid size: 15x15", GSIZE);
+						} else if(grid_size == 20) {
+							buttonList->AddButton("Grid size: 20x20", GSIZE);
+						} else {
+							buttonList->AddButton("Grid size: 25x25", GSIZE);
+						}
 						break;
 					case QUIT:
 						quit_game();
@@ -665,66 +780,6 @@ void mouse_action(int button, int state, int x, int y) {
 		}
 		delete [] bounds;
 		glutPostRedisplay();
-	}
-}
-
-void init_structs() {
-	menu = true;		// If game is in menu
-	running = false;	// If game is running at the moment
-	game_over = false;	// If the game has been lost
-	moved = false;		// If the snake has moved since the last direction change
-	loop = true;		// If the snake is allowed to loop at edges of screen
-	display_grid = false;
-	invisible = false;
-	fp = false;
-	difficulty = 0;
-	screen_height = arena_size + screen_pad;
-	screen_width = arena_size + screen_pad;
-	h_limit = screen_width / 2;
-	v_limit = screen_height / 2;
-	grid_left = -h_limit + screen_pad;
-	grid_top = v_limit - screen_pad;
-	view_rad = (grid_right - grid_left) / 64;
-	cam_angle = .0f;
-	grid = new Grid(arena_size, grid_size, screen_pad,
-					grid_left,
-					grid_top);
-	grid_right = grid_left + (grid_size * grid->GetCellSize());
-	grid_bot = grid_top - (grid_size * grid->GetCellSize());
-	
-	plank_size = (grid_right - grid_left) / plank_num;
-	printf("plank num is %d and plank size is %f\n", plank_num, plank_size);
-	fflush(stdout);
-
-	snake = new Snake(3, 2, grid_size, loop);
-
-	srand(time(NULL));
-	int pelletX = (int) ( rand() % ( grid_size - 1 ));
-	int pelletY = (int) ( rand() % ( grid_size - 1 ));
-	pellet = new Pellet(pelletX, pelletY);
-	ticks = 0;
-
-	menu_screen = 0;
-	int v_center_offset = v_limit - hud_height - screen_pad;
-	buttonList = new ButtonList(0 + v_center_offset, screen_width, 40);
-	buttonList->AddButton("Play", GAME);
-	buttonList->AddButton("Options", OPTIONS);
-	buttonList->AddButton("Instructions", INSTRUCTIONS);
-	buttonList->AddButton("Quit", QUIT);
-}
-
-void init_gl(int argc, char* argv[]) {
-	glViewport(0, 0, screen_width, screen_height);
-	glMatrixMode(GL_PROJECTION); 
-	glLoadIdentity();
-	gluPerspective(90.0f, screen_width / screen_height, 1.0f, 800.0f);
-	g_bitmap_text_handle = make_bitmap_text();
-	
-	load_and_bind_textures();
-	GLenum error = glGetError();
-	if (error!=GL_NO_ERROR) {
-		printf("GL error %s\n", gluErrorString(error));
-		fflush(stdout);
 	}
 }
 
@@ -746,6 +801,15 @@ void keyboard(unsigned char key, int, int) {
         case 'q': 	quit_game(); break;   // Press q to force exit application
 		case 'p':	if(!menu) {
 						running = !running;
+						if(!running) {
+							menu_screen = PAUSE;
+							buttonList->Refresh();
+							buttonList->AddButton("Main Menu", QMAIN);
+							buttonList->AddButton("Quit", QUIT);
+						} else {
+							buttonList->Refresh();
+							menu_screen = GAME;
+						}
 					}
 					break;
 		case 'f':   fp = !fp;
@@ -866,7 +930,7 @@ void idle() {
 int main(int argc, char* argv[]) {
 	// For a properly working game, grid order must be greater than 5
 	if(grid_size > 5 && arena_size > 200) {
-		init_structs();
+		init_state();
 		glutInit(&argc, argv);
 		glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGBA|GLUT_DEPTH);
 		glutInitWindowSize(screen_width, screen_height);

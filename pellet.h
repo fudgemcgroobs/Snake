@@ -8,6 +8,7 @@ class Pellet {
     public:
         Pellet();
         Pellet(int n_x, int n_y);
+        void Delete();
         bool Reposition(int n_x, int n_y);
         int GetX();
         int GetY();
