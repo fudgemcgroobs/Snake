@@ -24,6 +24,7 @@ class Snake {
         unsigned int EatPellet();
         unsigned int Move();
         unsigned int** GetSnakePosition();
+        unsigned int* GetHeadPosition();
         Direction GetDirection();
 };
 #endif

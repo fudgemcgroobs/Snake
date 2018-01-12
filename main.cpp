@@ -29,8 +29,12 @@ enum cube_side { L=0, R=1, T=2, B=3, F=4, N=5 };
 float arena_size = 600.0f;		// The size, in world units, of the play area
 float screen_pad = 5.0f;	// In world coordinates/sizes
 float hud_height = 50.0f;		// The height of the HUD in the world
-float y_tilt = .0f;
-float x_tilt = .0f;
+float y_pos = .0f;
+float x_pos = .0f;
+float z_pos = 300.0f;
+float x_ref = .0f;
+float y_ref = .0f;
+float z_ref = .0f;
 float extend = 100.0f;
 float text_size = .2f;
 float camlerp = .0f;
@@ -160,6 +164,8 @@ void quit_game() {
 
 void move_fp() {
 	// Move the camera on top of the head and point in right direction
+	unsigned int* head = snake->GetHeadPosition();
+
 }
 
 float str_width(const char* s) {
@@ -491,8 +497,8 @@ void display_game() {
 	glEnable(GL_DEPTH_TEST);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	gluLookAt(x_tilt, y_tilt, 2, // eye position
-			  0, 0, 0, // reference point
+	gluLookAt(x_pos, y_pos, z_pos, // eye position
+			  x_ref, y_ref, z_ref, // reference point
 			  0, y_up, z_up  // up vector
 		);
 	draw_grass();
@@ -585,8 +591,8 @@ void mouse_action(int button, int state, int x, int y) {
 						buttonList->Refresh();
 						menu = false;
 						running = true;
-						x_tilt = 0;
-						y_tilt = 0;
+						x_pos = 0;
+						y_pos = 0;
 						y_up = 1;
 						z_up = 0;
 						break;
@@ -686,7 +692,7 @@ void init_gl(int argc, char* argv[]) {
 	glLoadIdentity();
 	// Specify a projection with this view volume, centred on origin 
 	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
-	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -10000, 10000);
+	gluPerspective(grid_left - grid_right, 1.0f, 200.0f, -100.0f);
 	g_bitmap_text_handle = make_bitmap_text();
 	
 	load_and_bind_textures();
@@ -697,6 +703,21 @@ void init_gl(int argc, char* argv[]) {
 	}
 }
 
+void reshape(int w, int h) {
+	screen_width = w;
+	screen_height = h;
+	h_limit = screen_width / 2;
+	v_limit = screen_height / 2;
+    // Set viewport size (=scren size) and orthographic viewing
+	glViewport(0, 0, screen_width, screen_height);
+	glMatrixMode(GL_PROJECTION); 
+	glLoadIdentity();
+	// Specify a projection with this view volume, centred on origin 
+	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
+	gluPerspective(grid_left - grid_right, 1.0f, 200.0f, -100.0f);
+	glutPostRedisplay();
+}
+
 void keyboard(unsigned char key, int, int) {
     switch(key) {
         case 'q': 	quit_game(); break;   // Press q to force exit application
@@ -704,11 +725,39 @@ void keyboard(unsigned char key, int, int) {
 						running = !running;
 					}
 					break;
-		case 'f':   fp = !fp; break;
-		case 'y': 	y_tilt--; break;
-		case 'Y': 	y_tilt++; break;
-		case 'x': 	x_tilt--; break;
-		case 'X':	x_tilt++; break;
+		case 'f':   fp = !fp;
+					if(!fp) {
+						x_pos = 0;
+						y_pos = 0;
+						z_pos = 2;
+						x_ref = 0;
+						y_ref = 0;
+						z_ref = 0;
+					} else {
+						move_fp();
+					}
+					break;
+		case 'y': 	y_pos -= 10;
+					if(y_pos < -100){
+						y_pos = -100;
+					}
+					break;
+		case 'Y': 	y_pos += 10;
+					if(y_pos > 100) {
+						y_pos = 100;
+					}
+					break;
+		case 'x': 	x_pos -= 10;
+					if(x_pos < -100) {
+						x_pos = -100;
+					}
+					break;
+		case 'X':	x_pos += 10;
+					if(x_pos > 100) {
+						x_pos = 100;
+					}
+					break;
+		case 'i':   invisible = !invisible; break;
     }
     glutPostRedisplay();
 }
@@ -760,29 +809,14 @@ void special_keys(int key, int x, int y) {
 	}
 }
 
-void reshape(int w, int h) {
-	screen_width = w;
-	screen_height = h;
-	h_limit = screen_width / 2;
-	v_limit = screen_height / 2;
-    // Set viewport size (=scren size) and orthographic viewing
-	glViewport(0, 0, screen_width, screen_height);
-	glMatrixMode(GL_PROJECTION); 
-	glLoadIdentity();
-	// Specify a projection with this view volume, centred on origin 
-	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
-	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -10000, 10000);
-	glutPostRedisplay();
-}
-
 void idle() {
 	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
 	ticks++;
 	if(menu && ticks == 8) {
 			cam_angle = cam_angle < 360.0f ? cam_angle + 0.2f : .0f;
 			camlerp += (cam_angle - camlerp) * 0.01f;
-			x_tilt = view_rad*cos(camlerp);
-			y_tilt = view_rad*sin(camlerp);
+			x_pos = view_rad*cos(camlerp);
+			y_pos = view_rad*sin(camlerp);
 			ticks = 0;
 	} else if(running) {
 		if( (ticks >= max_delay - ( difficulty * delay_step ))) {

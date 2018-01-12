@@ -170,3 +170,11 @@ unsigned int** Snake::GetSnakePosition() {
     }
     return positions;
 }
+
+unsigned int* Snake::GetHeadPosition() {
+    unsigned int* position = 0;
+    position = new unsigned int[2];
+    position[0] = head->GetY();
+    position[1] = head->GetX();
+    return position;
+}
