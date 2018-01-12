@@ -27,10 +27,16 @@ enum tex { INTER=0, HEADFRONT=1, HEADRIGHT=2, HEADLEFT=3, HEADTOP=4,
 enum cube_side { L=0, R=1, T=2, B=3, F=4, N=5 };
 
 float arena_size = 600.0f;		// The size, in world units, of the play area
-float screen_padding = 5.0f;	// In world coordinates/sizes
+float screen_pad = 5.0f;	// In world coordinates/sizes
 float hud_height = 50.0f;		// The height of the HUD in the world
 float y_tilt = .0f;
 float x_tilt = .0f;
+float extend = 100.0f;
+float text_size = .2f;
+float camlerp = .0f;
+float plank_pad = 5.0f;
+float plank_th = 10.0f;
+float plank_size;
 float cam_angle;
 float screen_height;	// The total height of the viewport and screen
 float screen_width;		// The total width of the viewport and screen
@@ -40,9 +46,7 @@ float grid_left;		// The left edge of the grid (x-coordinate)
 float grid_right;		// The right edge of the grid (x-coordinate)
 float grid_top;			// The top edge of the grid (y-coordinate)
 float grid_bot;			// The bottom edge of the grid (y-coordinate)
-float view_rad;
-float extend = 100.0f;
-float text_size = .2f;
+float view_rad;			// The radius of the circle followed by the spinning camera
 
 // Cube edges: Right, Left etc.
 float c_r = 1.0f;
@@ -63,18 +67,17 @@ static float cube[6][4][3] = {
 };
 static int tex_source_coords[4][2] {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
 
-bool menu = true;		// If game is in menu
-bool running = false;	// If game is running at the moment
-bool game_over = false;	// If the game has been lost
-bool moved = false;		// If the snake has moved since the last direction change
-bool loop = true;		// If the snake is allowed to loop at edges of screen
-bool display_grid = false;
-bool invisible = false;
-bool fp = false;
+bool menu;		// If game is in menu
+bool running;	// If game is running at the moment
+bool game_over;	// If the game has been lost
+bool moved;		// If the snake has moved since the last direction change
+bool loop;		// If the snake is allowed to loop at edges of screen
+bool display_grid;
+bool invisible;
+bool fp;
 int ticks;			// Ticks that have been counted. Resets depending on difficulty
 int menu_screen;	// The current menu screen (check Destination in button.h for options)
 unsigned int grid_size = 15;	// The order of the grid/matrix. Must be >5
-unsigned int difficulty = 0;		// The current difficulty level
 unsigned int difficulty_step = 2;	// The required score change for difficulty increase
 unsigned int max_difficulty = 9;
 unsigned int delay_step = 1;		// Tick difference between difficulties
@@ -82,6 +85,8 @@ unsigned int max_delay = 23;		// The largest delay (in ticks) between snake step
 unsigned int g_bitmap_text_handle = 0;
 unsigned int y_up = 0;
 unsigned int z_up = 1;
+unsigned int plank_num = 10;
+unsigned int difficulty;		// The current difficulty level
 unsigned int textures[TEXNUM];
 Grid* grid;				// Stores grid cell coordinates
 Snake* snake;			// Stores snake information and allows snake movement
@@ -143,21 +148,18 @@ void restorePerspectiveProjection() {
 	glMatrixMode(GL_MODELVIEW);
 }
 
-void move_fp() {
-	// Move the camera on top of the head and point in right direction
+void quit_game() {
+	grid->Delete();
+	snake->Delete();
+	buttonList->Delete();
+	delete grid;
+	delete snake;
+	delete buttonList;
+	exit(0);
 }
 
-void draw_text(const char* s) {
-	int len = strlen(s);
-	for (int i = 0; i < len; i++) {
-		glutStrokeCharacter(GLUT_STROKE_ROMAN, s[i]);
-	}
-}
-void draw_text(std::string s) {
-	int len = s.length();
-	for (int i = 0; i < len; i++) {
-		glutStrokeCharacter(GLUT_STROKE_ROMAN, s[i]);
-	}
+void move_fp() {
+	// Move the camera on top of the head and point in right direction
 }
 
 float str_width(const char* s) {
@@ -175,6 +177,52 @@ float str_width(std::string s) {
 		total_width += glutStrokeWidth(GLUT_STROKE_ROMAN, s[i]) ;
 	}
 	return total_width;
+}
+
+void draw_text(const char* s) {
+	int len = strlen(s);
+	for (int i = 0; i < len; i++) {
+		glutStrokeCharacter(GLUT_STROKE_ROMAN, s[i]);
+	}
+}
+void draw_text(std::string s) {
+	int len = s.length();
+	for (int i = 0; i < len; i++) {
+		glutStrokeCharacter(GLUT_STROKE_ROMAN, s[i]);
+	}
+}
+
+void draw_header(const char* text) {
+	glPushMatrix();
+		float h_center_offset = -str_width(text) / ( 2 / text_size );
+		float v_center_offset = v_limit - screen_pad - ( hud_height / 2 );
+		glTranslatef(.0f + h_center_offset, .0f + v_center_offset, .0f);
+		glScalef(text_size, text_size, 1.0f);
+		draw_text(text);
+	glPopMatrix();
+}
+
+void draw_state() {
+	const char* text;
+	if(game_over) {
+		text = "Game Over!";
+	} else {
+		text = "Eat the pellets!";
+	}
+	draw_header(text);
+}
+
+void draw_score() {
+	std::string text("Score: ");
+	text.append(std::to_string(snake->GetScore()));
+
+	glPushMatrix();
+		float h_center_offset = -h_limit + screen_pad;
+		float v_center_offset = v_limit - screen_pad - ( hud_height / 2 );
+		glTranslatef(.0f + h_center_offset, .0f + v_center_offset, .0f);
+		glScalef(text_size, text_size, 1.0f);
+		draw_text(text);
+	glPopMatrix();
 }
 
 int normalize(int x, int a1, int a2, int b1, int b2) {
@@ -201,7 +249,6 @@ void draw_square() {
 }
 
 void draw_cube() {
-	glColor3f(1.0f, 1.0f, 1.0f);
 	for(size_t i = 0; i < 6; i++) {
 		glBegin(GL_QUADS);
 			for(size_t j = 0; j < 4; j++) {
@@ -380,15 +427,6 @@ void draw_3D_snake() {
 	delete [] positions;
 }
 
-void draw_pellet() {
-	Cell* new_cell = grid->GetCellAt(pellet->GetY(), pellet->GetX());
-	glPushMatrix();
-		glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
-		glScalef(grid->GetCellSize() - 0.5f, grid->GetCellSize() - 0.5f, 1.0f);
-		glRectf(.0f, .0f, 1.0f, -1.0f);
-	glPopMatrix();
-}
-
 void draw_3D_pellet() {
 	Cell* new_cell = grid->GetCellAt(pellet->GetY(), pellet->GetX());
 	glPushMatrix();
@@ -405,162 +443,32 @@ void draw_3D_pellet() {
 	glPopMatrix();
 }
 
-void draw_header(const char* text) {
+void draw_plank() {
 	glPushMatrix();
-		float h_center_offset = -str_width(text) / ( 2 / text_size );
-		float v_center_offset = v_limit - screen_padding - ( hud_height / 2 );
-		glTranslatef(.0f + h_center_offset, .0f + v_center_offset, .0f);
-		glScalef(text_size, text_size, 1.0f);
-		draw_text(text);
+		glScalef(plank_th, plank_size, 100.0f);
+		glColor3f(0.5f, 0.35f, 0.05f);
+		draw_cube();
 	glPopMatrix();
 }
 
-void draw_state() {
-	const char* text;
-	if(game_over) {
-		text = "Game Over!";
-	} else {
-		text = "Eat the pellets!";
-	}
-	draw_header(text);
-}
-
-void draw_score() {
-	std::string text("Score: ");
-	text.append(std::to_string(snake->GetScore()));
-
+void draw_outline() {
 	glPushMatrix();
-		float h_center_offset = -h_limit + screen_padding;
-		float v_center_offset = v_limit - screen_padding - ( hud_height / 2 );
-		glTranslatef(.0f + h_center_offset, .0f + v_center_offset, .0f);
-		glScalef(text_size, text_size, 1.0f);
-		draw_text(text);
-	glPopMatrix();
-}
-
-void check_head_collisions() {
-	// If head collide with body
-	if(snake->Bite() && running) {
-		running = false;
-		game_over = true;
-		glutPostRedisplay();
-	}
-	// If head collide w pellet
-	unsigned int** positions = snake->GetSnakePosition();
-	bool onSnake = false;
-	if(positions[0][0] == pellet->GetY() &&
-			positions[0][1] == pellet->GetX()) {
-		int pelletX;
-		int pelletY;
-		do{
-			onSnake = false;
-			pelletX = (int) ( rand() % ( grid_size - 1 ));
-			pelletY = (int) ( rand() % ( grid_size - 1 ));
-			printf("checking...\n");
-			fflush(stdout);
-			for(size_t i = 0; i < snake->GetLength(); i++) {
-				if(pelletX == positions[i][1] && pelletY == positions[i][0]) {
-					onSnake = true;
-					printf("Here\n");
-					fflush(stdout);
-					break;
-				}
+		glTranslatef(grid_left - screen_pad - plank_th,
+					 grid_bot - (plank_size / 2), .0f);
+		for(size_t i = 1; i <= 4; i++) {
+			for(size_t j = 1; j <= plank_num; j++) {
+				glTranslatef(.0f, plank_size + plank_pad, .0f);
+				draw_plank();
 			}
-		} while(!pellet->Reposition(pelletX, pelletY) || onSnake);
-		snake->EatPellet();
-		if(difficulty < max_difficulty && 
-				snake->GetScore() >= difficulty * difficulty_step) {
-			difficulty++;
+			glRotatef(-90.0f, .0f, .0f, 1.0f);
 		}
-	}
-	for ( int i = 0; i < snake->GetLength() - 1; i++) {
-		delete [] positions[i];
-	}
-	delete [] positions;
-}
-
-void quit_game() {
-	grid->Delete();
-	snake->Delete();
-	buttonList->Delete();
-	delete grid;
-	delete snake;
-	delete buttonList;
-	exit(0);
-}
-
-void keyboard(unsigned char key, int, int) {
-    switch(key) {
-        case 'q': 	quit_game(); break;   // Press q to force exit application
-		case 'p':	if(!menu) {
-						running = !running;
-					}
-					break;
-		case 'f':   fp = !fp;
-		case 'y': 	y_tilt--; break;
-		case 'Y': 	y_tilt++; break;
-		case 'x': 	x_tilt--; break;
-		case 'X':	x_tilt++; break;
-    }
-    glutPostRedisplay();
-}
-
-void special_keys(int key, int x, int y) {
-	switch(key) {
-		case GLUT_KEY_UP:
-			if(!fp && moved) {
-				if(snake->SetDirection(UP)) {
-					moved = false;
-				}
-			}
-			break;
-		case GLUT_KEY_RIGHT:
-			if(fp) {
-				switch(snake->GetDirection()) {
-					case UP: snake->SetDirection(RIGHT); break;
-					case DOWN: snake->SetDirection(LEFT); break;
-					case LEFT: snake->SetDirection(UP); break;
-					case RIGHT: snake->SetDirection(DOWN); break;
-				}
-			} else if(moved) {
-				if(snake->SetDirection(RIGHT)) {
-					moved = false;
-				}
-			}
-			break;
-		case GLUT_KEY_DOWN:
-			if(!fp && moved) {
-				if(snake->SetDirection(DOWN)) {
-					moved = false;
-				}
-			}	
-			break;
-		case GLUT_KEY_LEFT:
-			if(fp) {
-				switch(snake->GetDirection()) {
-					case UP: snake->SetDirection(LEFT); break;
-					case DOWN: snake->SetDirection(RIGHT); break;
-					case LEFT: snake->SetDirection(DOWN); break;
-					case RIGHT: snake->SetDirection(UP); break;
-				}
-			} else if(moved) {
-				if(snake->SetDirection(LEFT)) {
-					moved = false;
-				}
-			}
-			break;
-	}
+	glPopMatrix();
 }
 
 void display_gui() {
 	glPushMatrix();
 		glTranslatef(.0f, .0f, 1.0f);
 		glColor3f(1.0f, 1.0f, 1.0f);
-		// Draw the separator between the HUD and play area
-		glBegin(GL_LINES);
-			glVertex2f(-h_limit, grid_top + screen_padding);
-			glVertex2f(h_limit, grid_top + screen_padding);
-		glEnd();
 
 		glMatrixMode(GL_MODELVIEW);
 		if(menu_screen == MAIN) {
@@ -598,6 +506,8 @@ void display_game() {
 	draw_3D_snake();
 	// Draw the pellet
 	draw_3D_pellet();
+	// Draw arena outline
+	draw_outline();
 	glDisable(GL_DEPTH_TEST);
 }
 
@@ -615,29 +525,41 @@ void display() {
 	glutSwapBuffers();
 }
 
-void idle() {
-	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
-	ticks++;
-	if(menu && ticks == 10) {
-			cam_angle = cam_angle < 360.0f ? cam_angle + 0.2f : .0f;
-			x_tilt = view_rad*cos(cam_angle);
-			y_tilt = view_rad*sin(cam_angle);
-			ticks = 0;
-	} else if(running) {
-		if( (ticks == max_delay - ( difficulty * delay_step ))) {
-			if(snake->Move() != -1) {
-				running = false;
-				game_over = true;
-			} else if(fp) {
-				move_fp();
-			}
-			ticks = 0;
-			moved = true;
-			glutPostRedisplay();
-		}
-		check_head_collisions();
+void check_head_collisions() {
+	// If head collide with body
+	if(snake->Bite() && running) {
+		running = false;
+		game_over = true;
+		glutPostRedisplay();
 	}
-	glutPostRedisplay();
+	// If head collide w pellet
+	unsigned int** positions = snake->GetSnakePosition();
+	bool onSnake = false;
+	if(positions[0][0] == pellet->GetY() &&
+			positions[0][1] == pellet->GetX()) {
+		int pelletX;
+		int pelletY;
+		do{
+			onSnake = false;
+			pelletX = (int) ( rand() % ( grid_size - 1 ));
+			pelletY = (int) ( rand() % ( grid_size - 1 ));
+			for(size_t i = 0; i < snake->GetLength(); i++) {
+				if(pelletX == positions[i][1] && pelletY == positions[i][0]) {
+					onSnake = true;
+					break;
+				}
+			}
+		} while(!pellet->Reposition(pelletX, pelletY) || onSnake);
+		snake->EatPellet();
+		if(difficulty < max_difficulty && 
+				snake->GetScore() >= difficulty * difficulty_step) {
+			difficulty++;
+		}
+	}
+	for ( int i = 0; i < snake->GetLength() - 1; i++) {
+		delete [] positions[i];
+	}
+	delete [] positions;
 }
 
 void mouse_action(int button, int state, int x, int y) {
@@ -713,19 +635,33 @@ void mouse_action(int button, int state, int x, int y) {
 }
 
 void init_structs() {
-	screen_height = arena_size + screen_padding;
-	screen_width = arena_size + screen_padding;
+	menu = true;		// If game is in menu
+	running = false;	// If game is running at the moment
+	game_over = false;	// If the game has been lost
+	moved = false;		// If the snake has moved since the last direction change
+	loop = true;		// If the snake is allowed to loop at edges of screen
+	display_grid = false;
+	invisible = false;
+	fp = false;
+	difficulty = 0;
+	screen_height = arena_size + screen_pad;
+	screen_width = arena_size + screen_pad;
 	h_limit = screen_width / 2;
 	v_limit = screen_height / 2;
-	grid_left = -h_limit + screen_padding;
-	grid_top = v_limit - screen_padding;
-	view_rad = (grid_right - grid_left) / 32;
+	grid_left = -h_limit + screen_pad;
+	grid_top = v_limit - screen_pad;
+	view_rad = (grid_right - grid_left) / 64;
 	cam_angle = .0f;
-	grid = new Grid(arena_size, grid_size, screen_padding,
+	grid = new Grid(arena_size, grid_size, screen_pad,
 					grid_left,
 					grid_top);
 	grid_right = grid_left + (grid_size * grid->GetCellSize());
 	grid_bot = grid_top - (grid_size * grid->GetCellSize());
+	
+	plank_size = (grid_right - grid_left) / plank_num;
+	printf("plank num is %d and plank size is %f\n", plank_num, plank_size);
+	fflush(stdout);
+
 	snake = new Snake(3, 2, grid_size, loop);
 
 	srand(time(NULL));
@@ -735,23 +671,12 @@ void init_structs() {
 	ticks = 0;
 
 	menu_screen = 0;
-	int v_center_offset = v_limit - hud_height - screen_padding;
+	int v_center_offset = v_limit - hud_height - screen_pad;
 	buttonList = new ButtonList(0 + v_center_offset, screen_width, 40);
 	buttonList->AddButton("Play", GAME);
 	buttonList->AddButton("Options", OPTIONS);
 	buttonList->AddButton("Instructions", INSTRUCTIONS);
 	buttonList->AddButton("Quit", QUIT);
-}
-
-void reshape(int w, int h) {
-	// Set viewport size (=scren size) and orthographic viewing
-	glViewport(0, 0, w, h);
-	glMatrixMode(GL_MODELVIEW); 
-	glLoadIdentity();
-	// Specify a projection with this view volume, centred on origin 
-	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
-	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -10000, 10000);
-	glutPostRedisplay();
 }
 
 void init_gl(int argc, char* argv[]) {
@@ -770,6 +695,110 @@ void init_gl(int argc, char* argv[]) {
 		printf("GL error %s\n", gluErrorString(error));
 		fflush(stdout);
 	}
+}
+
+void keyboard(unsigned char key, int, int) {
+    switch(key) {
+        case 'q': 	quit_game(); break;   // Press q to force exit application
+		case 'p':	if(!menu) {
+						running = !running;
+					}
+					break;
+		case 'f':   fp = !fp; break;
+		case 'y': 	y_tilt--; break;
+		case 'Y': 	y_tilt++; break;
+		case 'x': 	x_tilt--; break;
+		case 'X':	x_tilt++; break;
+    }
+    glutPostRedisplay();
+}
+
+void special_keys(int key, int x, int y) {
+	switch(key) {
+		case GLUT_KEY_UP:
+			if(!fp && moved) {
+				if(snake->SetDirection(UP)) {
+					moved = false;
+				}
+			}
+			break;
+		case GLUT_KEY_RIGHT:
+			if(fp) {
+				switch(snake->GetDirection()) {
+					case UP: snake->SetDirection(RIGHT); break;
+					case DOWN: snake->SetDirection(LEFT); break;
+					case LEFT: snake->SetDirection(UP); break;
+					case RIGHT: snake->SetDirection(DOWN); break;
+				}
+			} else if(moved) {
+				if(snake->SetDirection(RIGHT)) {
+					moved = false;
+				}
+			}
+			break;
+		case GLUT_KEY_DOWN:
+			if(!fp && moved) {
+				if(snake->SetDirection(DOWN)) {
+					moved = false;
+				}
+			}	
+			break;
+		case GLUT_KEY_LEFT:
+			if(fp) {
+				switch(snake->GetDirection()) {
+					case UP: snake->SetDirection(LEFT); break;
+					case DOWN: snake->SetDirection(RIGHT); break;
+					case LEFT: snake->SetDirection(DOWN); break;
+					case RIGHT: snake->SetDirection(UP); break;
+				}
+			} else if(moved) {
+				if(snake->SetDirection(LEFT)) {
+					moved = false;
+				}
+			}
+			break;
+	}
+}
+
+void reshape(int w, int h) {
+	screen_width = w;
+	screen_height = h;
+	h_limit = screen_width / 2;
+	v_limit = screen_height / 2;
+    // Set viewport size (=scren size) and orthographic viewing
+	glViewport(0, 0, screen_width, screen_height);
+	glMatrixMode(GL_PROJECTION); 
+	glLoadIdentity();
+	// Specify a projection with this view volume, centred on origin 
+	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
+	glOrtho(-h_limit, h_limit, -v_limit, v_limit, -10000, 10000);
+	glutPostRedisplay();
+}
+
+void idle() {
+	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
+	ticks++;
+	if(menu && ticks == 8) {
+			cam_angle = cam_angle < 360.0f ? cam_angle + 0.2f : .0f;
+			camlerp += (cam_angle - camlerp) * 0.01f;
+			x_tilt = view_rad*cos(camlerp);
+			y_tilt = view_rad*sin(camlerp);
+			ticks = 0;
+	} else if(running) {
+		if( (ticks >= max_delay - ( difficulty * delay_step ))) {
+			if(snake->Move() != -1) {
+				running = false;
+				game_over = true;
+			} else if(fp) {
+				move_fp();
+			}
+			ticks = 0;
+			moved = true;
+			glutPostRedisplay();
+		}
+		check_head_collisions();
+	}
+	glutPostRedisplay();
 }
 
 int main(int argc, char* argv[]) {
