@@ -76,9 +76,11 @@ unsigned int grid_size = 15;	// The order of the grid/matrix. Must be >5
 unsigned int difficulty = 0;		// The current difficulty level
 unsigned int difficulty_step = 2;	// The required score change for difficulty increase
 unsigned int max_difficulty = 9;
-unsigned int delay_step = 10;		// Tick difference between difficulties
-unsigned int max_delay = 140;		// The largest delay (in ticks) between snake steps
+unsigned int delay_step = 1;		// Tick difference between difficulties
+unsigned int max_delay = 23;		// The largest delay (in ticks) between snake steps
 unsigned int g_bitmap_text_handle = 0;
+unsigned int y_up = 0;
+unsigned int z_up = 1;
 unsigned int textures[TEXNUM];
 Grid* grid;				// Stores grid cell coordinates
 Snake* snake;			// Stores snake information and allows snake movement
@@ -449,9 +451,13 @@ void check_head_collisions() {
 			onSnake = false;
 			pelletX = (int) ( rand() % ( grid_size - 1 ));
 			pelletY = (int) ( rand() % ( grid_size - 1 ));
+			printf("checking...\n");
+			fflush(stdout);
 			for(size_t i = 0; i < snake->GetLength(); i++) {
-				if(pelletX == positions[i][0] && pelletY == positions[i][1]) {
+				if(pelletX == positions[i][1] && pelletY == positions[i][0]) {
 					onSnake = true;
+					printf("Here\n");
+					fflush(stdout);
 					break;
 				}
 			}
@@ -559,7 +565,7 @@ void display_game() {
 	glLoadIdentity();
 	gluLookAt(x_tilt, y_tilt, 2, // eye position
 			  0, 0, 0, // reference point
-			  0, 0, 1  // up vector
+			  0, y_up, z_up  // up vector
 		);
 	draw_grass();
 	// Draw the grid on which the snake and pellets will be displayed
@@ -592,13 +598,12 @@ void display() {
 void idle() {
 	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
 	ticks++;
-	if(menu && ticks == 100) {
+	if(menu && ticks == 10) {
 			cam_angle = cam_angle < 360.0f ? cam_angle + 0.2f : .0f;
 			x_tilt = view_rad*cos(cam_angle);
 			y_tilt = view_rad*sin(cam_angle);
 			ticks = 0;
-	}
-	if(running) {
+	} else if(running) {
 		if( (ticks == max_delay - ( difficulty * delay_step ))) {
 			if(snake->Move() != -1) {
 				running = false;
@@ -638,6 +643,8 @@ void mouse_action(int button, int state, int x, int y) {
 						running = true;
 						x_tilt = 0;
 						y_tilt = 0;
+						y_up = 1;
+						z_up = 0;
 						break;
 					case GRID:
 						display_grid = !display_grid;
