@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <string>
+#include <math.h>
 #include "grid.h"
 #include "snake.h"
 #include "pellet.h"
@@ -22,12 +23,15 @@
 enum tex { INTER=0, HEADFRONT=1, HEADRIGHT=2, HEADLEFT=3, HEADTOP=4,
 		   SEGMENT=5, SEGMENTT=6, TURNL=7, TURNR=8,
 		   TAILR=9, TAILL=10, TAILT=11, END=12,
-		   GRASS=13, TEXNUM=14 };
+		   GRASS=13, DIRT=14, APPLE=15, APPLETOP=16, TEXNUM=17 };
 enum cube_side { L=0, R=1, T=2, B=3, F=4, N=5 };
 
 float arena_size = 600.0f;		// The size, in world units, of the play area
 float screen_padding = 5.0f;	// In world coordinates/sizes
 float hud_height = 50.0f;		// The height of the HUD in the world
+float y_tilt = .0f;
+float x_tilt = .0f;
+float cam_angle;
 float screen_height;	// The total height of the viewport and screen
 float screen_width;		// The total width of the viewport and screen
 float h_limit;			// The horizontal limit at which can draw
@@ -36,8 +40,9 @@ float grid_left;		// The left edge of the grid (x-coordinate)
 float grid_right;		// The right edge of the grid (x-coordinate)
 float grid_top;			// The top edge of the grid (y-coordinate)
 float grid_bot;			// The bottom edge of the grid (y-coordinate)
+float view_rad;
+float extend = 100.0f;
 float text_size = .2f;
-float extend;	// Size by which a 3D snake segment should be elongated	
 
 // Cube edges: Right, Left etc.
 float c_r = 1.0f;
@@ -67,8 +72,6 @@ bool display_grid = false;
 bool invisible = false;
 int ticks;			// Ticks that have been counted. Resets depending on difficulty
 int menu_screen;	// The current menu screen (check Destination in button.h for options)
-int y_tilt = 0;
-int x_tilt = 0;
 unsigned int grid_size = 15;	// The order of the grid/matrix. Must be >5
 unsigned int difficulty = 0;		// The current difficulty level
 unsigned int difficulty_step = 2;	// The required score change for difficulty increase
@@ -110,6 +113,31 @@ void load_and_bind_textures()
 	textures[END] = load_and_bind_texture("./images/end.png");
 
 	textures[GRASS] = load_and_bind_texture("./images/grass.png");
+	textures[DIRT] = load_and_bind_texture("./images/dirt.png");
+	textures[APPLE] = load_and_bind_texture("./images/apple.png");
+	textures[APPLETOP] = load_and_bind_texture("./images/appletop.png");
+}
+
+void setOrthographicProjection() {
+	// switch to projection mode
+	glMatrixMode(GL_PROJECTION);
+	// save previous matrix which contains the
+	//settings for the perspective projection
+	glPushMatrix();
+	// reset matrix
+	glLoadIdentity();
+	// set a 2D orthographic projection
+	gluOrtho2D(-h_limit, h_limit, -v_limit, v_limit);
+	// switch back to modelview mode
+	glMatrixMode(GL_MODELVIEW);
+}
+
+void restorePerspectiveProjection() {
+	glMatrixMode(GL_PROJECTION);
+	// restore previous projection matrix
+	glPopMatrix();
+	// get back to modelview mode
+	glMatrixMode(GL_MODELVIEW);
 }
 
 void draw_text(const char* s) {
@@ -151,16 +179,16 @@ int normalize(int x, int a1, int a2, int b1, int b2) {
 * scaling on x or y by a number N will result in a respective side of size N
 */
 void draw_square() {
-	static float vertex[4][2] = {
-		{.0f, .0f},
-		{1.0f, .0f},
-		{1.0f, -1.0f},
-		{.0f, -1.0f}
+	static float vertex[4][3] = {
+		{.0f, .0f, .0f},
+		{1.0f, .0f, .0f},
+		{1.0f, -1.0f, .0f},
+		{.0f, -1.0f, .0f}
 	};
 
 	glBegin(GL_LINE_LOOP);
 		for(int i = 0; i < 4; i++) {
-			glVertex2fv(vertex[i]);
+			glVertex3fv(vertex[i]);
 		}
 	glEnd();
 }
@@ -205,17 +233,19 @@ void draw_textured_top(tex source, cube_side side, unsigned int dir) {
 }
 
 void draw_grass() {
-	glBindTexture(GL_TEXTURE_2D, textures[GRASS]);
-	glBegin(GL_QUADS);
-		glTexCoord2f(.0f, .0f);
-		glVertex3f(-h_limit, -h_limit, .2f);
-		glTexCoord2f(1.0f, .0f);
-		glVertex3f(h_limit, -h_limit, .2f);
-		glTexCoord2f(1.0f, 1.0f);
-		glVertex3f(h_limit, h_limit, .2f);
-		glTexCoord2f(.0f, 1.0f);
-		glVertex3f(-h_limit, h_limit, .2f);
-	glEnd();
+	glPushMatrix();
+		float size = grid_right - grid_left + (2*extend);
+		glTranslatef(grid_left - extend, grid_top + extend, -size);
+		glScalef(size, size, size);
+
+		glEnable(GL_TEXTURE_2D);
+			draw_textured_side(DIRT, L);
+			draw_textured_side(DIRT, R);
+			draw_textured_side(DIRT, T);
+			draw_textured_side(DIRT, B);
+			draw_textured_top(GRASS, N, RIGHT);
+		glDisable(GL_TEXTURE_2D);				
+	glPopMatrix();
 }
 
 /*
@@ -352,6 +382,22 @@ void draw_pellet() {
 	glPopMatrix();
 }
 
+void draw_3D_pellet() {
+	Cell* new_cell = grid->GetCellAt(pellet->GetY(), pellet->GetX());
+	glPushMatrix();
+		float size = grid->GetCellSize();
+		glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
+		glScalef(size, size, size);
+		glEnable(GL_TEXTURE_2D);
+			draw_textured_side(APPLE, L);
+			draw_textured_side(APPLE, R);
+			draw_textured_side(APPLE, T);
+			draw_textured_side(APPLE, B);
+			draw_textured_top(APPLETOP, N, RIGHT);
+		glDisable(GL_TEXTURE_2D);
+	glPopMatrix();
+}
+
 void draw_header(const char* text) {
 	glPushMatrix();
 		float h_center_offset = -str_width(text) / ( 2 / text_size );
@@ -394,20 +440,32 @@ void check_head_collisions() {
 	}
 	// If head collide w pellet
 	unsigned int** positions = snake->GetSnakePosition();
+	bool onSnake = false;
 	if(positions[0][0] == pellet->GetY() &&
 			positions[0][1] == pellet->GetX()) {
 		int pelletX;
 		int pelletY;
 		do{
+			onSnake = false;
 			pelletX = (int) ( rand() % ( grid_size - 1 ));
 			pelletY = (int) ( rand() % ( grid_size - 1 ));
-		} while(!pellet->Reposition(pelletX, pelletY));
+			for(size_t i = 0; i < snake->GetLength(); i++) {
+				if(pelletX == positions[i][0] && pelletY == positions[i][1]) {
+					onSnake = true;
+					break;
+				}
+			}
+		} while(!pellet->Reposition(pelletX, pelletY) || onSnake);
 		snake->EatPellet();
 		if(difficulty < max_difficulty && 
 				snake->GetScore() >= difficulty * difficulty_step) {
 			difficulty++;
 		}
 	}
+	for ( int i = 0; i < snake->GetLength() - 1; i++) {
+		delete [] positions[i];
+	}
+	delete [] positions;
 }
 
 void quit_game() {
@@ -469,42 +527,8 @@ void special_keys(int key, int x, int y) {
 }
 
 void display_gui() {
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-	glColor3f(1.0f, 1.0f, 1.0f);
-	// Draw the separator between the HUD and play area
-	glBegin(GL_LINES);
-		glVertex2f(-h_limit, grid_top + screen_padding);
-		glVertex2f(h_limit, grid_top + screen_padding);
-	glEnd();
-
-	glMatrixMode(GL_MODELVIEW);
-	if(menu_screen == MAIN) {
-		draw_header("Main Menu");
-	} else if(menu_screen == OPTIONS) {
-		draw_header("Options");
-	} else if(menu_screen == INSTRUCTIONS) {
-		draw_header("Instructions");
-	} else if(menu_screen == GAME) {
-		menu = false;
-		running = true;
-	} else if(menu_screen == QUIT) {
-		quit_game();
-	}
-	buttonList->DrawButtons();
-	glutSwapBuffers();
-}
-
-void display_game() {
-    glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-	glMatrixMode(GL_MODELVIEW);
-	glLoadIdentity();
-	gluLookAt(x_tilt, y_tilt, 2, // eye position
-			  0, 0, 0, // reference point
-			  0, 1, 0  // up vector
-		);
-
+	glPushMatrix();
+		glTranslatef(.0f, .0f, 1.0f);
 		glColor3f(1.0f, 1.0f, 1.0f);
 		// Draw the separator between the HUD and play area
 		glBegin(GL_LINES);
@@ -512,37 +536,69 @@ void display_game() {
 			glVertex2f(h_limit, grid_top + screen_padding);
 		glEnd();
 
-		draw_grass();
-		// Draw the grid on which the snake and pellets will be displayed
-		if(display_grid) {
-			draw_grid();
-		} else {
-			// Draw edge
+		glMatrixMode(GL_MODELVIEW);
+		if(menu_screen == MAIN) {
+			draw_header("Main Menu");
+		} else if(menu_screen == OPTIONS) {
+			draw_header("Options");
+		} else if(menu_screen == INSTRUCTIONS) {
+			draw_header("Instructions");
+		} else if(menu_screen == GAME) {
+			draw_state();
+			draw_score();
+		} else if(menu_screen == QUIT) {
+			quit_game();
 		}
-		// Draw the snake
-		draw_3D_snake();
-		// Draw the pellet
-		glColor3f(.3f, .6f, .3f);
-		draw_pellet();
-		//draw HUD text
-		glColor3f(1.0f, 1.0f, 1.0f);
-		draw_state();
-		draw_score();
-    glutSwapBuffers();
+		buttonList->DrawButtons();
+	glPopMatrix();
+}
+
+void display_game() {
+	glEnable(GL_DEPTH_TEST);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	gluLookAt(x_tilt, y_tilt, 2, // eye position
+			  0, 0, 0, // reference point
+			  0, 0, 1  // up vector
+		);
+	draw_grass();
+	// Draw the grid on which the snake and pellets will be displayed
+	if(display_grid) {
+		draw_grid();
+	} else {
+		// Draw edge
+	}
+	// Draw the snake
+	draw_3D_snake();
+	// Draw the pellet
+	draw_3D_pellet();
+	glDisable(GL_DEPTH_TEST);
 }
 
 void display() {
-	if(menu) {
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	display_game();
+	
+	setOrthographicProjection();
+		glPushMatrix();
+		glLoadIdentity();
 		display_gui();
-	} else {
-		display_game();
-	}
+		glPopMatrix();
+	restorePerspectiveProjection();
+
+	glutSwapBuffers();
 }
 
 void idle() {
 	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
+	ticks++;
+	if(menu && ticks == 100) {
+			cam_angle = cam_angle < 360.0f ? cam_angle + 0.2f : .0f;
+			x_tilt = view_rad*cos(cam_angle);
+			y_tilt = view_rad*sin(cam_angle);
+			ticks = 0;
+	}
 	if(running) {
-		ticks++;
 		if( (ticks == max_delay - ( difficulty * delay_step ))) {
 			if(snake->Move() != -1) {
 				running = false;
@@ -554,6 +610,7 @@ void idle() {
 		}
 		check_head_collisions();
 	}
+	glutPostRedisplay();
 }
 
 void mouse_action(int button, int state, int x, int y) {
@@ -579,6 +636,8 @@ void mouse_action(int button, int state, int x, int y) {
 						buttonList->Refresh();
 						menu = false;
 						running = true;
+						x_tilt = 0;
+						y_tilt = 0;
 						break;
 					case GRID:
 						display_grid = !display_grid;
@@ -625,18 +684,19 @@ void mouse_action(int button, int state, int x, int y) {
 }
 
 void init_structs() {
-	screen_height = arena_size + screen_padding + hud_height;
+	screen_height = arena_size + screen_padding;
 	screen_width = arena_size + screen_padding;
 	h_limit = screen_width / 2;
 	v_limit = screen_height / 2;
 	grid_left = -h_limit + screen_padding;
-	grid_right = h_limit - screen_padding;
-	grid_top = v_limit - hud_height - screen_padding;
-	grid_bot = -v_limit + screen_padding;
+	grid_top = v_limit - screen_padding;
+	view_rad = (grid_right - grid_left) / 32;
+	cam_angle = .0f;
 	grid = new Grid(arena_size, grid_size, screen_padding,
 					grid_left,
 					grid_top);
-	extend = grid->GetCellSize() / 2;
+	grid_right = grid_left + (grid_size * grid->GetCellSize());
+	grid_bot = grid_top - (grid_size * grid->GetCellSize());
 	snake = new Snake(3, 2, grid_size, loop);
 
 	srand(time(NULL));
@@ -657,7 +717,7 @@ void init_structs() {
 void reshape(int w, int h) {
 	// Set viewport size (=scren size) and orthographic viewing
 	glViewport(0, 0, w, h);
-	glMatrixMode(GL_PROJECTION); 
+	glMatrixMode(GL_MODELVIEW); 
 	glLoadIdentity();
 	// Specify a projection with this view volume, centred on origin 
 	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
@@ -681,7 +741,6 @@ void init_gl(int argc, char* argv[]) {
 		printf("GL error %s\n", gluErrorString(error));
 		fflush(stdout);
 	}
-	glEnable(GL_DEPTH_TEST);
 }
 
 int main(int argc, char* argv[]) {
