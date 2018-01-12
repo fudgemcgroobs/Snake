@@ -70,6 +70,7 @@ bool moved = false;		// If the snake has moved since the last direction change
 bool loop = true;		// If the snake is allowed to loop at edges of screen
 bool display_grid = false;
 bool invisible = false;
+bool fp = false;
 int ticks;			// Ticks that have been counted. Resets depending on difficulty
 int menu_screen;	// The current menu screen (check Destination in button.h for options)
 unsigned int grid_size = 15;	// The order of the grid/matrix. Must be >5
@@ -140,6 +141,10 @@ void restorePerspectiveProjection() {
 	glPopMatrix();
 	// get back to modelview mode
 	glMatrixMode(GL_MODELVIEW);
+}
+
+void move_fp() {
+	// Move the camera on top of the head and point in right direction
 }
 
 void draw_text(const char* s) {
@@ -491,6 +496,7 @@ void keyboard(unsigned char key, int, int) {
 						running = !running;
 					}
 					break;
+		case 'f':   fp = !fp;
 		case 'y': 	y_tilt--; break;
 		case 'Y': 	y_tilt++; break;
 		case 'x': 	x_tilt--; break;
@@ -502,28 +508,42 @@ void keyboard(unsigned char key, int, int) {
 void special_keys(int key, int x, int y) {
 	switch(key) {
 		case GLUT_KEY_UP:
-			if(moved) {
+			if(!fp && moved) {
 				if(snake->SetDirection(UP)) {
 					moved = false;
 				}
 			}
 			break;
 		case GLUT_KEY_RIGHT:
-			if(moved) {
+			if(fp) {
+				switch(snake->GetDirection()) {
+					case UP: snake->SetDirection(RIGHT); break;
+					case DOWN: snake->SetDirection(LEFT); break;
+					case LEFT: snake->SetDirection(UP); break;
+					case RIGHT: snake->SetDirection(DOWN); break;
+				}
+			} else if(moved) {
 				if(snake->SetDirection(RIGHT)) {
 					moved = false;
 				}
 			}
 			break;
 		case GLUT_KEY_DOWN:
-			if(moved) {
+			if(!fp && moved) {
 				if(snake->SetDirection(DOWN)) {
 					moved = false;
 				}
 			}	
 			break;
 		case GLUT_KEY_LEFT:
-			if(moved) {
+			if(fp) {
+				switch(snake->GetDirection()) {
+					case UP: snake->SetDirection(LEFT); break;
+					case DOWN: snake->SetDirection(RIGHT); break;
+					case LEFT: snake->SetDirection(DOWN); break;
+					case RIGHT: snake->SetDirection(UP); break;
+				}
+			} else if(moved) {
 				if(snake->SetDirection(LEFT)) {
 					moved = false;
 				}
@@ -608,6 +628,8 @@ void idle() {
 			if(snake->Move() != -1) {
 				running = false;
 				game_over = true;
+			} else if(fp) {
+				move_fp();
 			}
 			ticks = 0;
 			moved = true;

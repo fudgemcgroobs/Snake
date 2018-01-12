@@ -123,6 +123,10 @@ unsigned int Snake::EatPellet() {
     return score;
 }
 
+Direction Snake::GetDirection() {
+    return head->GetDirection();
+}
+
 unsigned int Snake::Move() {
     Segment* s = head;
     while(s != NULL) {
