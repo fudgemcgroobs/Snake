@@ -31,7 +31,7 @@ float screen_pad = 5.0f;	// In world coordinates/sizes
 float hud_height = 50.0f;		// The height of the HUD in the world
 float y_pos = .0f;
 float x_pos = .0f;
-float z_pos = 300.0f;
+float z_pos = 400.0f;
 float x_ref = .0f;
 float y_ref = .0f;
 float z_ref = .0f;
@@ -40,6 +40,7 @@ float text_size = .2f;
 float camlerp = .0f;
 float plank_pad = 5.0f;
 float plank_th = 10.0f;
+float horizon = 100.0f;
 float plank_size;
 float cam_angle;
 float screen_height;	// The total height of the viewport and screen
@@ -81,7 +82,7 @@ bool invisible;
 bool fp;
 int ticks;			// Ticks that have been counted. Resets depending on difficulty
 int menu_screen;	// The current menu screen (check Destination in button.h for options)
-unsigned int grid_size = 15;	// The order of the grid/matrix. Must be >5
+unsigned int grid_size = 20;	// The order of the grid/matrix. Must be >5
 unsigned int difficulty_step = 2;	// The required score change for difficulty increase
 unsigned int max_difficulty = 9;
 unsigned int delay_step = 1;		// Tick difference between difficulties
@@ -165,7 +166,29 @@ void quit_game() {
 void move_fp() {
 	// Move the camera on top of the head and point in right direction
 	unsigned int* head = snake->GetHeadPosition();
+	Cell* new_cell = grid->GetCellAt(head[0], head[1]);
+	float size = grid->GetCellSize();
+	x_pos = new_cell->GetX() + (size/2);
+	y_pos = new_cell->GetY() - (size/2);
 
+	switch(snake->GetDirection()) {
+		case UP:	x_ref = x_pos;
+					y_ref = y_pos + horizon;
+					y_pos -= size;
+					break;
+		case DOWN:	x_ref = x_pos;
+					y_ref = y_pos - horizon;
+					y_pos += size;
+					break;
+		case LEFT:	x_ref = x_pos - horizon;
+					y_ref = y_pos;
+					x_pos += size;
+					break;
+		case RIGHT:	x_ref = x_pos + horizon;
+					y_ref = y_pos;
+					x_pos -= size;
+					break;
+	}
 }
 
 float str_width(const char* s) {
@@ -410,9 +433,10 @@ void draw_3D_snake() {
 	unsigned int** positions = snake->GetSnakePosition();
 	for(int i = 0; i < snake->GetLength(); i++) {
 		glPushMatrix();
+			float size = grid->GetCellSize();
 			Cell* new_cell = grid->GetCellAt(positions[i][0], positions[i][1]);
 			glTranslatef(new_cell->GetX(), new_cell->GetY(), .0f);
-			glScalef(grid->GetCellSize(), grid->GetCellSize(), grid->GetCellSize());
+			glScalef(size, size, size);
 			if(i == 0) {
 				draw_head(positions[i][2]);
 			} else if(i == snake->GetLength() - 1) {
@@ -591,10 +615,14 @@ void mouse_action(int button, int state, int x, int y) {
 						buttonList->Refresh();
 						menu = false;
 						running = true;
-						x_pos = 0;
-						y_pos = 0;
-						y_up = 1;
-						z_up = 0;
+						if(!fp) {
+							x_pos = 0;
+							y_pos = 0;
+							y_up = 1;
+							z_up = 0;
+						} else {
+							move_fp();
+						}
 						break;
 					case GRID:
 						display_grid = !display_grid;
@@ -686,13 +714,10 @@ void init_structs() {
 }
 
 void init_gl(int argc, char* argv[]) {
-    // Set viewport size (=scren size) and orthographic viewing
 	glViewport(0, 0, screen_width, screen_height);
 	glMatrixMode(GL_PROJECTION); 
 	glLoadIdentity();
-	// Specify a projection with this view volume, centred on origin 
-	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
-	gluPerspective(grid_left - grid_right, 1.0f, 200.0f, -100.0f);
+	gluPerspective(90.0f, screen_width / screen_height, 1.0f, 800.0f);
 	g_bitmap_text_handle = make_bitmap_text();
 	
 	load_and_bind_textures();
@@ -708,13 +733,11 @@ void reshape(int w, int h) {
 	screen_height = h;
 	h_limit = screen_width / 2;
 	v_limit = screen_height / 2;
-    // Set viewport size (=scren size) and orthographic viewing
 	glViewport(0, 0, screen_width, screen_height);
 	glMatrixMode(GL_PROJECTION); 
 	glLoadIdentity();
-	// Specify a projection with this view volume, centred on origin 
-	// Takes LEFT, RIGHT, BOTTOM, TOP, NEAR and FAR
-	gluPerspective(grid_left - grid_right, 1.0f, 200.0f, -100.0f);
+
+	gluPerspective(90.0f, w/h, 1.0f, 800.0f);
 	glutPostRedisplay();
 }
 
@@ -727,34 +750,39 @@ void keyboard(unsigned char key, int, int) {
 					break;
 		case 'f':   fp = !fp;
 					if(!fp) {
-						x_pos = 0;
-						y_pos = 0;
-						z_pos = 2;
-						x_ref = 0;
-						y_ref = 0;
-						z_ref = 0;
+						y_up = 1.0f;
+						z_up = .0f;
+						x_pos = .0f;
+						y_pos = .0f;
+						z_pos = 400.0f;
+						x_ref = .0f;
+						y_ref = .0f;
+						z_ref = .0f;
 					} else {
+						y_up = .0f;
+						z_up = 1.0f;
+						z_pos = 100.0f;
 						move_fp();
 					}
 					break;
-		case 'y': 	y_pos -= 10;
-					if(y_pos < -100){
-						y_pos = -100;
+		case 'y': 	if(!fp) y_pos -= 10;
+					if(y_pos < -200){
+						y_pos = -200;
 					}
 					break;
-		case 'Y': 	y_pos += 10;
-					if(y_pos > 100) {
-						y_pos = 100;
+		case 'Y': 	if(!fp) y_pos += 10;
+					if(y_pos > 200) {
+						y_pos = 200;
 					}
 					break;
-		case 'x': 	x_pos -= 10;
-					if(x_pos < -100) {
-						x_pos = -100;
+		case 'x': 	if(!fp) x_pos -= 10;
+					if(x_pos < -200) {
+						x_pos = -200;
 					}
 					break;
-		case 'X':	x_pos += 10;
-					if(x_pos > 100) {
-						x_pos = 100;
+		case 'X':	if(!fp) x_pos += 10;
+					if(x_pos > 200) {
+						x_pos = 200;
 					}
 					break;
 		case 'i':   invisible = !invisible; break;
