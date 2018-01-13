@@ -1,3 +1,6 @@
+/**
+ * Class to store the grid coordinates of a pellet on a bidimensional grid
+ */
 #ifndef PELLET_H
 #define PELLET_H
 

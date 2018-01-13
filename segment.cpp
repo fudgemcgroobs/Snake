@@ -1,6 +1,14 @@
+/**
+ * Implementation of the Segment class.
+ */
 #include "segment.h"
 #include <stdio.h>
 
+/**
+ * Initialises the segment with the passed order, assuming alone in a list.
+ * Caller must also make calls to SetPrev/SetNext to integrate the segment
+ *  in a snake (list)
+ */
 Segment::Segment(int o) {
     prev = NULL;
     next = NULL;
@@ -13,7 +21,12 @@ Segment::Segment(int o) {
     p_y = 0;
     order = o;
 }
-
+/**
+ * Initialises the segment with the passed order, as head, assuming alone in
+ *  a list.
+ * Caller must also make calls to SetPrev/SetNext to integrate the segment
+ *  in a snake (list)
+ */
 Segment::Segment(int o, bool h) {
     prev = NULL;
     next = NULL;
@@ -59,11 +72,17 @@ void Segment:: SetY(int n_y) {
     y = n_y;
 }
 
+/**
+ * Moves the segment in the approproate direction.
+ * The only segment moved according to set direction is the head.
+ * All other segments are positioned in place of segments ahead of them.
+ */
 void Segment::Move() {
     p_x = x;
     p_y = y;
     p_dir = dir;
     if(head) {
+        // The head moves independently
         switch(dir) {
             case UP:
                 y -= 1;
@@ -79,6 +98,7 @@ void Segment::Move() {
                 break;
         }
     } else {
+        // Other segments move in place segments ahead of them
         if(prev != NULL) {
             x = prev->GetPX();
             y = prev->GetPY();

@@ -1,3 +1,6 @@
+/**
+ * Class to store the coordinates of a cell in a bidimensional grid
+ */
 #ifndef CELL_H
 #define CELL_H
 

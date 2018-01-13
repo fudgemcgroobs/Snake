@@ -1,17 +1,28 @@
+/**
+ * Implementation of the ButtonList class.
+ */
 #include "buttonlist.h"
 #include <stdio.h>
 
+/**
+ * Initialises the empty list object setting the next_y to the passed top_y
+ *  value, and calculating the width based on the screen width and the passed
+ *  ratio.
+ */
 ButtonList::ButtonList(int n_y, int screen_w, int ratio) {
     head = NULL;
     tail = NULL;
     top_y = n_y;
     next_y = n_y;
     width = screen_w * ratio / 100;
-    width = width < 100 ? 100 : width;
+    width = width < 100 ? 100 : width;  // Does not llow width less than 100
     pad = BUTTON_HEIGHT / 4;
     count = 0;
 }
 
+/**
+ * Clears the button list, resetting the count and next_y values.
+ */
 void ButtonList::Refresh() {
     head = NULL;
     tail = NULL;
@@ -19,6 +30,9 @@ void ButtonList::Refresh() {
     count = 0;
 }
 
+/**
+ * Adds a new Button object to the list, to be drawn under the last button.
+ */
 void ButtonList::AddButton(const char* name, Destination d) {
     Button* b = new Button(next_y, next_y - BUTTON_HEIGHT,
                             0 - (width / 2), 0 + (width / 2),
@@ -28,12 +42,16 @@ void ButtonList::AddButton(const char* name, Destination d) {
         tail->SetNext(b);
         tail = b;
     } else {
+        // This is the first element added since initilisation of refresh
         head = b;
         tail = b;
     }
     count++;
 }
 
+/**
+ * Releases memory allocated when creating Button objects.
+ */
 void ButtonList::Delete() {
     Button* b = head;
     while(b != NULL) {
@@ -44,6 +62,10 @@ void ButtonList::Delete() {
     }
 }
 
+/**
+ * Draw the stored buttons.
+ * Each stored button contains the necessary information to draw.
+ */
 void ButtonList::DrawButtons() {
     Button* b = head;
     while(b != NULL) {
@@ -52,6 +74,10 @@ void ButtonList::DrawButtons() {
     }
 }
 
+/**
+ * Returns a bidimensional array contaoining the boundries of each button,
+ *  as well as the Destination (effect) of each.
+ */
 int** ButtonList::GetButtonBounds() {
     int** button_bounds = 0;
     button_bounds = new int*[count];

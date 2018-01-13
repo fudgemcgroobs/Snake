@@ -1,12 +1,23 @@
+/**
+ * Implementation of the snake class.
+ * The snake is always initialised at the headX/headY location facing right,
+ *  with a size of 3, and the body to the left of the head.
+ */
 #include "snake.h"
 #include <stdio.h>
 
+/**
+ * Initialises a snake object with the position of the head, the cell limit
+ *  to the right and towards the bottom of the arena, as well as a flag
+ *  setting whether or not the snake should loop at the sides of the arena.
+ */
 Snake::Snake(int headX, int headY, int n_limit, bool n_loop) {
     length = 3;
     score = 0;
     limit = n_limit;
     loop = n_loop;
 
+    // Initialise 3 segments and set head/tail
     head = new Segment(1, true);
     Segment* s = new Segment(2);
     tail = new Segment(3);
@@ -20,6 +31,10 @@ Snake::Snake(int headX, int headY, int n_limit, bool n_loop) {
     tail->SetPosition(headX-2, headY, RIGHT);
 }
 
+/**
+ * Adds another segment to the snake, at the tail-end, resetting the
+ *  tail to this segment.
+ */
 void Snake::AddSegment() {
     length++;
     Segment* s = new Segment(length);
@@ -29,6 +44,9 @@ void Snake::AddSegment() {
     tail = s;
 }
 
+/**
+ * Release memory allocated when creating snake segments.
+ */
 void Snake::Delete() {
     Segment* s = head;
     while(s != NULL) {
@@ -39,10 +57,17 @@ void Snake::Delete() {
     }
 }
 
+/**
+ * Sets the loop flag to the passed value.
+ */
 void Snake::SetLoop(bool n_loop) {
     loop = n_loop;
 }
 
+/**
+ * Sets the direction of the snake.
+ * Does not allow the snake to turn 180 degrees on itself.
+ */
 bool Snake::SetDirection(Direction d) {
     switch(d) {
         case UP:
@@ -73,13 +98,19 @@ bool Snake::SetDirection(Direction d) {
     return false;
 }
 
+/**
+ * Checks if the snake is about to bite its body.
+ * If there is not head, the method returns true.
+ */
 bool Snake::Bite() {
+    // Will store segments temporarily to check if they are in front of the head
     Segment* s;
     if(head != NULL) {
         s = head->GetNext();
     } else {
         return true;
     }
+    // Retrieve the coordinates of the cell in front of the head
     int x;
     int y;
     switch(head->GetDirection()) {
@@ -100,6 +131,7 @@ bool Snake::Bite() {
             y = head->GetY();
             break;
     }
+    // Check if any of the elements are in the cell ahead of the head
     while(s != NULL) {
         if(s->GetX() == x && s->GetY() == y) {
             return true;
@@ -126,26 +158,34 @@ unsigned int Snake::EatPellet() {
 Direction Snake::GetDirection() {
     return head->GetDirection();
 }
-
+/**
+ * Moves each segment forward, looping around arena when appropriate.
+ * Returns -1 if all segments were moved successfully, or the number of
+ *  of the segment which caused the snake to stop advancing (for debugging).
+ */
 unsigned int Snake::Move() {
     Segment* s = head;
     while(s != NULL) {
-        s->Move();
+        s->Move();  // Move the segment
         if( s->GetX() >= limit ) {
+            // Reached Right edge            
             if(loop) {
                 s->SetX(0);
             } else return s->GetOrder();
         } else if( s->GetX() < 0 ) {
+            // Reached Left edge
             if(loop) {
                 s->SetX(limit - 1);
             } else return s->GetOrder();
         }
 
         if( s->GetY() >= limit ) {
+            // Reached Bottom edge
             if(loop) {
                 s->SetY(0);
             } else return s->GetOrder();
         } else if( s->GetY() < 0 ) {
+            // Reached Top edge
             if(loop) {
                 s->SetY(limit - 1);
             } else return s->GetOrder();
@@ -156,6 +196,11 @@ unsigned int Snake::Move() {
     return -1;
 }
 
+/**
+ * Returns a bidimensional array containing, coordinates, direction, and
+ *  previous direction of each of the segments.
+ * Allocates memory which must be freed by the caller.
+ */
 unsigned int** Snake::GetSnakePosition() {
     unsigned int** positions = 0;
     positions = new unsigned int*[length];
@@ -171,6 +216,9 @@ unsigned int** Snake::GetSnakePosition() {
     return positions;
 }
 
+/**
+ * Returns an array containing the coordinates of the snake head
+ */
 unsigned int* Snake::GetHeadPosition() {
     unsigned int* position = 0;
     position = new unsigned int[2];

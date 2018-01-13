@@ -1,19 +1,24 @@
+/**
+ * Class which stores data of a snake segment (practically a specialised)
+ *  linked list element).
+ * CAUTION: Only one element should have the 'head' flag set to true
+ */
 #ifndef SEGMENT_H
 #define SEGMENT_H
 
 enum Direction { UP, RIGHT, DOWN, LEFT };
 
 class Segment {
-    Segment* prev;
-    Segment* next;
-    Direction dir;
-    Direction p_dir;
-    bool head;
-    int x;
+    Segment* prev;  // The previous segment in the snake (head has prev = NULL)
+    Segment* next;  // The next segment in the snake (tail has next = NULL)
+    Direction dir;  // The current direction of the segment
+    Direction p_dir;// The previous direction of the segment
+    bool head;  // Flag which determines if the segment is the snake head
+    int x;  // The grid coordinates of the segment in a 2d grid
     int y;
-    int p_x;
+    int p_x;    // The previous coordinates of the segment
     int p_y;
-    unsigned int order;
+    unsigned int order; // The position of the segment in the snake (list)
     
     public:
         Segment();

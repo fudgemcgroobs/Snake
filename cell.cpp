@@ -1,3 +1,6 @@
+/**
+ * Simple implementation of the cell class
+ */
 #include "cell.h"
 
 Cell::Cell() {

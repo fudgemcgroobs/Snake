@@ -1,15 +1,20 @@
+/**
+ * Linked list class to store inormation related to a moving snake
+ *  made of segments, and to interact with the snake data.
+ */
 #ifndef SNAKE_H
 #define SNAKE_H
 
 #include "segment.h"
 
 class Snake {
-    Segment* head;
-    Segment* tail;
-    bool loop;
-    int limit;
-    unsigned int length;
-    unsigned int score;
+    Segment* head;  // The head of the snake
+    Segment* tail;  // The tail of the snake
+    bool loop;      // If the snake should loop at the edges of the arena
+    int limit;      // The order of the arena, in terms of number of cells
+    unsigned int length;    // The length of the snake
+    unsigned int score;     // The score of the snake (number of eaten pellets)
+    // Perform necessary actions and add another snake segments
     void AddSegment();
 
     public:

@@ -934,8 +934,20 @@ void mouse_action(int button, int state, int x, int y) {
 						game_over = false;
 						menu = true;
 						menu_screen = MAIN;
+
+						// Reset up vector to view arena while rotating
 						y_up = 0;
 						z_up = 1;
+
+						// Replace the eye above arena
+						x_pos = .0f;
+						y_pos = .0f;
+						z_pos = 400.0f;
+
+						// Set the reference point to origin in case it was changed
+						x_ref = .0f;
+						y_ref = .0f;
+						z_ref = .0f;
 						init_structs();
 					case MAIN:
 					    // Used to return to main menu from sub-menus
@@ -951,11 +963,14 @@ void mouse_action(int button, int state, int x, int y) {
 						running = true;
 						// Position camera according to view mode
 						if(!fp) {
+							// Replace eye in middle
 							x_pos = 0;
 							y_pos = 0;
+							// Allow eye to look down
 							y_up = 1;
 							z_up = 0;
 						} else {
+							// Place camera in first person position
 							move_fp();
 						}
 						break;
@@ -1132,15 +1147,16 @@ void special_keys(int key, int x, int y) {
 			}
 			break;
 		case GLUT_KEY_RIGHT:
-			if(fp) {
-				switch(snake->GetDirection()) {
-					case UP: snake->SetDirection(RIGHT); break;
-					case DOWN: snake->SetDirection(LEFT); break;
-					case LEFT: snake->SetDirection(UP); break;
-					case RIGHT: snake->SetDirection(DOWN); break;
-				}
-			} else if(moved) {
-				if(snake->SetDirection(RIGHT)) {
+			if(moved) {
+				if(fp) {
+					switch(snake->GetDirection()) {
+						case UP: snake->SetDirection(RIGHT); break;
+						case DOWN: snake->SetDirection(LEFT); break;
+						case LEFT: snake->SetDirection(UP); break;
+						case RIGHT: snake->SetDirection(DOWN); break;
+					}
+					moved = false;
+				} else if(snake->SetDirection(RIGHT)) {
 					moved = false;
 				}
 			}
@@ -1153,15 +1169,16 @@ void special_keys(int key, int x, int y) {
 			}	
 			break;
 		case GLUT_KEY_LEFT:
-			if(fp) {
-				switch(snake->GetDirection()) {
-					case UP: snake->SetDirection(LEFT); break;
-					case DOWN: snake->SetDirection(RIGHT); break;
-					case LEFT: snake->SetDirection(DOWN); break;
-					case RIGHT: snake->SetDirection(UP); break;
-				}
-			} else if(moved) {
-				if(snake->SetDirection(LEFT)) {
+			if(moved) {
+				if(fp) {
+					switch(snake->GetDirection()) {
+						case UP: snake->SetDirection(LEFT); break;
+						case DOWN: snake->SetDirection(RIGHT); break;
+						case LEFT: snake->SetDirection(DOWN); break;
+						case RIGHT: snake->SetDirection(UP); break;
+					}
+					moved = false;
+				}else if(snake->SetDirection(LEFT)) {
 					moved = false;
 				}
 			}

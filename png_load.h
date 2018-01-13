@@ -1,3 +1,7 @@
+/**
+ * Functions to load png files.
+ * Implemented by course CS324 coordinators at the University of Warwick.
+ */
 #ifndef PNGLOAD_H
 
 #include <png.h>
@@ -28,7 +32,8 @@ int png_load(const char* file_name,
         return 0;
     }
 
-    png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING,
+                                                 NULL, NULL, NULL);
     if (!png_ptr)
     {
         fprintf(stderr, "error: png_create_read_struct returned 0.\n");
@@ -78,8 +83,8 @@ int png_load(const char* file_name,
     png_uint_32 temp_width, temp_height;
 
     // get info about png
-    png_get_IHDR(png_ptr, info_ptr, &temp_width, &temp_height, &bit_depth, &color_type,
-        NULL, NULL, NULL);
+    png_get_IHDR(png_ptr, info_ptr, &temp_width, &temp_height, &bit_depth,
+                 &color_type, NULL, NULL, NULL);
 
     if (width) { *width = temp_width; }
     if (height){ *height = temp_height; }

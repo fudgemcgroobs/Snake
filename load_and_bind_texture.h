@@ -1,3 +1,7 @@
+/**
+ * Functions to load and bind textures to be used with GL.
+ * Implemented by course CS324 coordinators at the University of Warwick.
+ */
 #ifndef LOAD_AND_BIND_TEXTURE_H
 #define LOAD_AND_BIND_TEXTURE_H
 

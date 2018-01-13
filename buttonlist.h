@@ -1,3 +1,6 @@
+/**
+ * Linked list class which stores a list of buttons to be displayed.
+*/
 #ifndef BUTTONLIST_H
 #define BUTTONLIST_H
 
@@ -5,13 +8,14 @@
 #define BUTTON_HEIGHT 40
 
 class ButtonList {
-    Button* head;
-    Button* tail;
-    int top_y;
-    int width;
-    int pad;
+    Button* head;   // The top button
+    Button* tail;   // The bottom button
+    int top_y;  // The Y coordinate of the top of the list
+    int width;  // The desired width of the buttons
+    int pad;    // The padding between the buttons
+    // The Y coordinate of the next button that will be added to the list
     int next_y;
-    unsigned int count;
+    unsigned int count; // The number of buttons in the list
 
     public:
         ButtonList();
