@@ -8,7 +8,7 @@
  * Destinations describe button effects. A handler must be implemented externally
  *  to receive the button destination and take action (e.g. reinitialise the menu)
  */
-enum Destination { QMAIN, MAIN, OPTIONS, QUIT, PAUSE, GAME, LOOP, GRID, INV, GSIZE };
+enum Destination { QMAIN, MAIN, OPTIONS, QUIT, PAUSE, GAME, LOOP, GRID, INV, FP, GSIZE };
 
 class Button {
     float text_size;

@@ -964,13 +964,21 @@ void mouse_action(int button, int state, int x, int y) {
 						// Position camera according to view mode
 						if(!fp) {
 							// Replace eye in middle
-							x_pos = 0;
-							y_pos = 0;
+							x_pos = .0f;
+							y_pos = .0f;
+							z_pos = 400.0f;
 							// Allow eye to look down
-							y_up = 1;
-							z_up = 0;
+							y_up = 1.0f;
+							z_up = .0f;
+							// Set the reference at origin in case it was changed
+							x_ref = .0f;
+							y_ref = .0f;
+							z_ref = .0f;
 						} else {
 							// Place camera in first person position
+							y_up = .0f;
+							z_up = 1.0f;
+							z_pos = 100.0f;
 							move_fp();
 						}
 						break;
@@ -988,6 +996,11 @@ void mouse_action(int button, int state, int x, int y) {
 					case INV:
 						// Used to turn on/off snake body invisibility
 						invisible = !invisible;
+						menu_screen = OPTIONS;
+						goto options;
+					case FP:
+						// Used to turn on/off first person perspective
+						fp = !fp;
 						menu_screen = OPTIONS;
 						goto options;
 					case GSIZE:
@@ -1018,6 +1031,11 @@ void mouse_action(int button, int state, int x, int y) {
 							buttonList->AddButton("Invisible body: ON", INV);
 						} else {
 							buttonList->AddButton("Invisible body: OFF", INV);
+						}
+						if(fp) {
+							buttonList->AddButton("First person: ON", FP);
+						} else {
+							buttonList->AddButton("First person: OFF", FP);
 						}
 						if(grid_size == 15) {
 							buttonList->AddButton("Grid size: 15x15", GSIZE);
