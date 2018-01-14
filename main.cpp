@@ -163,16 +163,12 @@ void load_and_bind_textures()
  *  on top of the view-relative game objects
  */
 void setOrthographicProjection() {
-	// Switch to projection mode
 	glMatrixMode(GL_PROJECTION);
-	// Save previous matrix which contains the
-	// Settings for the perspective projection
+	// Save the perspective projection matrix
 	glPushMatrix();
-	// Reset matrix
+	// Set the 2D orthographic perspective
 	glLoadIdentity();
-	// Set a 2D orthographic projection
 	gluOrtho2D(-h_limit, h_limit, -v_limit, v_limit);
-	// Switch back to modelview mode
 	glMatrixMode(GL_MODELVIEW);
 }
 
@@ -184,9 +180,8 @@ void setOrthographicProjection() {
  */
 void restorePerspectiveProjection() {
 	glMatrixMode(GL_PROJECTION);
-	// Restore previous projection matrix
+	// Revert to the perspective projection
 	glPopMatrix();
-	// Get back to modelview mode
 	glMatrixMode(GL_MODELVIEW);
 }
 
