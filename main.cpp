@@ -83,8 +83,46 @@ static float cube[6][4][3] = {
 	{{c_l, c_t, c_n}, {c_r, c_t, c_n}, {c_r, c_b, c_n}, {c_l, c_b, c_n}}  // Near
 };
 
+static float c_normals[6][3] = {
+	{-1.0f, .0f, .0f},
+	{1.0f, .0f, .0f},
+	{.0f, 1.0f, .0f},
+	{.0f, -1.0f, .0f},
+	{.0f, .0f, -1.0f},
+	{.0f, .0f, 1.0f}
+};
+// Properties of grass material
+float g_ambient[] = {0.4, 0.6, 0.4, 1.0};
+float g_diffuse[] = {0.5, 0.5, 0.5, 1.0};
+float g_specular[] = {.5f, .5f, .5f, 1.0};
+float g_shininess[] = {40.0};
+
+// Properties of snake material
+float s_ambient[] = {0.7, 0.7, 0.7, 1.0};
+float s_diffuse[] = {0.75, 0.75, 0.75, 1.0};
+float s_specular[] = {1.0, 1.0, 1.0, 1.0};
+float s_shininess[] = {70.0};
+
+// Properties of wood material
+float w_ambient[] = {0.5, 0.5, 0.5, 1.0};
+float w_diffuse[] = {.4, .4, .4, 1.0};
+float w_specular[] = {.4, .4, .4, 1.0};
+float w_shininess[] = {40.0};
+
+// Properties of pellet material
+float p_ambient[] = {0.7, 0.6, 0.4, 1.0};
+float p_diffuse[] = {0.6, 0.6, 0.6, 1.0};
+float p_specular[] = {1.0, 1.0, 1.0, 1.0};
+float p_shininess[] = {55.0};
+
+// Light properties
+float light_ambient[] = {1.0f, 1.0f, 1.0f, 1.0f};
+float light_diffuse[] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+float lightpos = 0.0f;
+
 // Coordinates if texture corners. All textures are individually drawn,
-//  square and fully used
+// Square and fully used
 static int tex_source_coords[4][2] {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
 
 bool menu;		// If game is in menu
@@ -103,8 +141,8 @@ int menu_screen; // The current menu screen (check Destination in button.h for o
 unsigned int grid_size = 20;	  // The order of the grid/matrix. Must be >5
 unsigned int difficulty_step = 2; // The required score change for difficulty increase
 unsigned int max_difficulty = 9;
-unsigned int delay_step = 1; // Tick difference between difficulties
-unsigned int max_delay = 23; // The largest delay (in ticks) between snake steps
+unsigned int delay_step = 10; // Tick difference between difficulties (1)
+unsigned int max_delay = 120; // The largest delay (in ticks) between snake steps (23)
 unsigned int g_bitmap_text_handle = 0;
 unsigned int y_up = 0; // The Y coordinate of the camera up vector
 unsigned int z_up = 1; // The Z coordinate of the camera up vector
@@ -365,11 +403,14 @@ void draw_square() {
  *  |____________|
  */
 void draw_cube() {
+	// For each side
 	for(size_t i = 0; i < 6; i++) {
 		glBegin(GL_QUADS);
+			// Retrieve side vertices
 			for(size_t j = 0; j < 4; j++) {
 				glVertex3fv(cube[i][j]);
 			}
+			glNormal3fv(c_normals[i]);	// Retrieve side normal			
 		glEnd();
 	}
 }
@@ -389,6 +430,7 @@ void draw_textured_side(tex source, cube_side side) {
 						 tex_source_coords[i][1]);
 			glVertex3fv(cube[side][i]);
 		}
+		glNormal3fv(c_normals[side]);	// Retreieve side normal
 	glEnd();
 }
 
@@ -412,6 +454,7 @@ void draw_textured_top(tex source, cube_side side, unsigned int dir) {
 						 tex_source_coords[i][1]);
 			glVertex3fv(cube[side][(i+add)%4]);
 		}
+		glNormal3fv(c_normals[side]);	// Retrieve side normal
 	glEnd();
 }
 
@@ -419,6 +462,11 @@ void draw_textured_top(tex source, cube_side side, unsigned int dir) {
  * Draws the cube of grass abd dirt on which the arena rests.
  */
 void draw_grass() {
+	// set the surface properties (all same material)
+	glMaterialfv(GL_FRONT, GL_AMBIENT, g_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, g_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, g_specular);
+	glMaterialfv(GL_FRONT, GL_SHININESS, g_shininess);
 	glPushMatrix();
 		// Calculate size from arena size and desired extra padding
 		float size = grid_right - grid_left + (2*extend);
@@ -440,18 +488,20 @@ void draw_grass() {
  * Method that draws a grid using the coordinates stored in the Grid structure. 
  */
 void draw_grid() {
+	glDisable(GL_LIGHTING);
 	for(int i = 0; i < grid_size; i++) {
-			for(int j = 0; j < grid_size; j++) {
-				glPushMatrix();
-					// Extract coordinates and move sqare into position
-					Cell* new_cell = grid->GetCellAt(i, j);
-					glTranslatef(new_cell->GetX(), new_cell->GetY(), 1.0f);
-					// Scale the square to represent cell size
-					glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
-					draw_square();
-				glPopMatrix();
-			}
+		for(int j = 0; j < grid_size; j++) {
+			glPushMatrix();
+				// Extract coordinates and move sqare into position
+				Cell* new_cell = grid->GetCellAt(i, j);
+				glTranslatef(new_cell->GetX(), new_cell->GetY(), 1.0f);
+				// Scale the square to represent cell size
+				glScalef(grid->GetCellSize(), grid->GetCellSize(), 1.0f);
+				draw_square();
+			glPopMatrix();
 		}
+	}
+	glEnable(GL_LIGHTING);
 }
 
 /**
@@ -586,6 +636,11 @@ void draw_segment(unsigned int dir) {
  *  segments, and turning segments.
  */
 void draw_3D_snake() {
+	// set the surface properties (all same material)
+	glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, s_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, s_specular);
+	glMaterialfv(GL_FRONT, GL_SHININESS, s_shininess);
 	// At each position, elements 0 and 1 are coordinates, 2 is the
 	//  direction and 3 is the previous direction
 	unsigned int** positions = snake->GetSnakePosition();
@@ -625,6 +680,11 @@ void draw_3D_snake() {
  * Draws the collectible pellet, textured as an apple
  */
 void draw_3D_pellet() {
+	// set the surface properties (all same material)
+	glMaterialfv(GL_FRONT, GL_AMBIENT, p_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, p_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, p_specular);
+	glMaterialfv(GL_FRONT, GL_SHININESS, p_shininess);
 	Cell* new_cell = grid->GetCellAt(pellet->GetY(), pellet->GetX());
 	glPushMatrix();
 		float size = grid->GetCellSize();
@@ -645,6 +705,11 @@ void draw_3D_pellet() {
  * Draws a plank, an element of the fence outline
  */
 void draw_plank() {
+	// set the surface properties (all same material)
+	glMaterialfv(GL_FRONT, GL_AMBIENT, w_ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, w_diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, w_specular);
+	glMaterialfv(GL_FRONT, GL_SHININESS, w_shininess);
 	glPushMatrix();
 		glScalef(plank_th, plank_size, 100.0f);
 		glColor3f(0.5f, 0.35f, 0.05f);
@@ -675,6 +740,7 @@ void draw_outline() {
  * Displays the GUI elements: header, score, and buttons
  */
 void display_gui() {
+	glDisable(GL_LIGHTING);
 	glColor3f(1.0f, .0f, .0f);	// Red
 	glPushMatrix();
 		glTranslatef(.0f, .0f, 1.0f);
@@ -696,6 +762,7 @@ void display_gui() {
 	glPopMatrix();
 	// Set colour to white to not affect other objects
 	glColor3f(1.0f, 1.0f, 1.0f);
+	glEnable(GL_LIGHTING);
 }
 
 /**
@@ -857,6 +924,23 @@ void init_gl(int argc, char* argv[]) {
 		fflush(stdout);
 	}
 	g_bitmap_text_handle = make_bitmap_text();		
+
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+
+	// fix the light position
+	float light_position[] = {2000.0f, 2000.0f, 2000.0f, .0f};
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+
+	// enable lighting and turn on the light0
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+
+	// so that hidden surfaces are removed
+	glEnable(GL_DEPTH_TEST);
+
+	// mode of shading
+	glShadeModel(GL_SMOOTH);
 }
 
 /**
@@ -1139,6 +1223,8 @@ void keyboard(unsigned char key, int, int) {
 					}
 					break;
 		case 'i':   invisible = !invisible; break;
+		case 'l':	lightpos -= 10.0f; break;
+		case 'L':	lightpos += 10.0f; break;
     }
     glutPostRedisplay();
 }
@@ -1205,7 +1291,7 @@ void special_keys(int key, int x, int y) {
 void idle() {
 	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
 	ticks++;		// Increase ticks
-	if(menu && ticks == 8) {
+	if(menu && ticks == 60) {
 			// Rotate the camera around the arena
 			cam_angle = cam_angle < 360.0f ? cam_angle + 0.2f : .0f;
 			camlerp += (cam_angle - camlerp) * 0.01f;
