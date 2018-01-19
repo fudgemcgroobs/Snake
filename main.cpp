@@ -1,9 +1,18 @@
 #ifdef __APPLE__
 #include <GLUT/glut.h> 
 #else
-
 #include <GL/glew.h>
 #include <GL/glut.h> 
+#endif
+
+#ifdef _linux_
+unsigned int delay_step = 1; // Tick difference between difficulties
+unsigned int max_delay = 23; // The largest delay (in ticks) between snake steps
+unsigned int menu_ticks = 8; // ticks before the camera should rotate in menu screen
+#else
+unsigned int delay_step = 10; // Tick difference between difficulties
+unsigned int max_delay = 120; // The largest delay (in ticks) between snake steps
+unsigned int menu_ticks = 50; // ticks before the camera should rotate in menu screen
 #endif
 
 #include <stdio.h>
@@ -141,8 +150,6 @@ int menu_screen; // The current menu screen (check Destination in button.h for o
 unsigned int grid_size = 20;	  // The order of the grid/matrix. Must be >5
 unsigned int difficulty_step = 2; // The required score change for difficulty increase
 unsigned int max_difficulty = 9;
-unsigned int delay_step = 10; // Tick difference between difficulties (1)
-unsigned int max_delay = 120; // The largest delay (in ticks) between snake steps (23)
 unsigned int g_bitmap_text_handle = 0;
 unsigned int y_up = 0; // The Y coordinate of the camera up vector
 unsigned int z_up = 1; // The Z coordinate of the camera up vector
@@ -1291,7 +1298,7 @@ void special_keys(int key, int x, int y) {
 void idle() {
 	usleep(1000);	// Microsectonds. 1000 = 1 millisecond
 	ticks++;		// Increase ticks
-	if(menu && ticks == 60) {
+	if(menu && ticks == menu_ticks) {
 			// Rotate the camera around the arena
 			cam_angle = cam_angle < 360.0f ? cam_angle + 0.2f : .0f;
 			camlerp += (cam_angle - camlerp) * 0.01f;
